@@ -28,7 +28,9 @@ Set up the project
 Start creating podcasts!
 
 🎉 The Result
+
 Get professional-quality podcasts featuring:
+
 A host asking insightful questions
 An expert giving detailed answers
 Natural-sounding conversations
