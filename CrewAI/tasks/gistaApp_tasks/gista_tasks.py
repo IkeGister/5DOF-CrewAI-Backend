@@ -306,6 +306,27 @@ def create_project_management_tasks(agents):
 
     return [workflow_coordination, resource_optimization, quality_management]
 
+def create_research_workflow(tasks):
+    """
+    The research workflow should be:
+    1. Initial terminology identification
+    2. Dictionary lookup for basic understanding
+    3. Technical documentation research for depth
+    4. Academic verification for accuracy
+    5. Current context for relevance
+    6. Background research synthesis
+    7. Final analysis framework creation
+    """
+    return [
+        tasks["terminology_analysis"],
+        tasks["dictionary_lookup"],
+        tasks["technical_documentation"],
+        tasks["academic_verification"],
+        tasks["current_context"],
+        tasks["background_research"],
+        tasks["analysis_framework"]
+    ]
+
 def create_all_gista_tasks(agents):
     """Create and return all tasks for the Gista App workflow"""
     
