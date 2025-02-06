@@ -1,219 +1,130 @@
 # CrewAI Backend System
 
-A modular and extensible AI system built with CrewAI that demonstrates multi-agent collaboration. This system uses teams of AI agents to perform various tasks including content generation, travel guidance, and ticket searching.
+A sophisticated AI system that works like a well-coordinated team, handling tasks from content analysis to podcast creation. Think of it as having a group of AI specialists working together, each bringing their unique skills to the table.
 
-## Project Structure 
+## 🌟 What Makes This Special
+
+- **Smart Content Processing**: Turns complex documents into engaging podcast content
+- **Research Power**: Uses multiple specialized tools to gather and verify information
+- **Voice Generation**: Creates natural-sounding conversations using ElevenLabs technology
+- **Flexible & Expandable**: Easy to add new capabilities as needed
+
+## 🏗️ Project Structure
 
 ```
 CrewAI/
-├── agents/
-│   └── agents.py         # Agent definitions
-├── config/
-│   ├── llm_config.py     # LLM provider configuration
-│   ├── settings.py       # Global settings
-│   └── topics.py         # Topic configuration
-├── tasks/
-│   └── crewAI_tasks.py   # Task definitions
-├── tests/
-│   ├── test_llm_config.py
-│   ├── test_multiAgent_toolUse.py
-│   └── test_travelGuide_agents.py
-├── tools/
-│   ├── content_gen_tools.py
-│   ├── ticket_search_tool.py
-│   └── travel_guide_tool.py
-├── utils/
-│   └── api_keys.py       # API key management
-├── .env                  # Environment variables
-├── .gitignore
-├── crew_ai.pyi
-├── directories.py
-├── main.py              # Main application entry point
-├── README.md            # Project documentation
-└── requirements.txt     # Project dependencies
+├── agents/              # The AI team members
+├── tasks/              # What each team member does
+├── tools/              # Tools the team uses
+│   ├── gista_tools/    # Specialized podcast creation tools
+│   └── content_tools/  # General content handling tools
+└── config/             # System settings
 ```
 
 ## 🚀 Getting Started
 
-### Prerequisites
+### What You'll Need
 
-- Python 3.11 or higher
-- OpenAI API key
-- Virtual environment (recommended)
+- Python 3.11 or newer
+- API keys for:
+  - OpenAI (for AI processing)
+  - ElevenLabs (for voice generation)
+  - SerperDev (for research capabilities)
 
-### Installation
+### Quick Setup
 
-1. Clone the repository and navigate to the project directory:
+1. Clone and enter the project:
 ```bash
 git clone <repository-url>
 cd CrewAI
 ```
 
-2. Create and activate a virtual environment:
+2. Set up your environment:
 ```bash
 python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-```
-
-3. Install dependencies:
-```bash
+source venv/bin/activate  # Windows: venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-4. Create a `.env` file in the root directory and add your API keys:
-```
-OPENAI_API_KEY=your-openai-key-here
-HUGGINGFACE_API_TOKEN=your-huggingface-token
-MISTRAL_API_KEY=your-mistral-key
-COHERE_API_KEY=your-cohere-key
+3. Create your `.env` file:
+```env
+OPENAI_API_KEY=your-key-here
+ELEVENLABS_API_KEY=your-key-here
+SERPER_API_KEY=your-key-here
 ```
 
-### Running the Application
+### Running the System
 
-Run the application via command line:
 ```bash
 python main.py
 ```
 
-## 🔧 Features
+## 🔧 Main Features
 
-### 1. Multiple Tool Support
+### 1. Smart Research System
+- Searches multiple sources (Wikipedia, academic papers, news)
+- Verifies information across different sources
+- Handles technical documentation and dictionary lookups
 
-The system includes various specialized tools:
-- Content Generation Tools (`tools/content_gen_tools.py`)
-- Travel Guide Tool (`tools/travel_guide_tool.py`)
-- Ticket Search Tool (`tools/ticket_search_tool.py`)
+### 2. Content Processing
+- Analyzes documents and extracts key points
+- Structures content for podcast format
+- Creates natural Q&A segments
 
-### 2. Multiple LLM Support (`config/llm_config.py`)
+### 3. Voice Generation
+- Creates natural-sounding conversations
+- Supports multiple voice roles (host, expert)
+- Maintains consistent voice quality across segments
 
-Support for various LLM providers:
-- OpenAI (default)
-- HuggingFace
-- Mistral
-- Cohere
+## 🎯 Use Cases
 
-### 3. Testing
+1. **Content Transformation**
+   - Turn research papers into engaging podcasts
+   - Convert technical documents into educational content
+   - Transform articles into interview-style discussions
 
-Available test suites:
-```bash
-python -m unittest tests/test_llm_config.py
-python -m unittest tests/test_multiAgent_toolUse.py
-python -m unittest tests/test_travelGuide_agents.py
-```
+2. **Research and Verification**
+   - Gather comprehensive information on topics
+   - Fact-check and verify claims
+   - Compile technical documentation
 
-## 🔧 Component Overview
+3. **Audio Content Creation**
+   - Generate professional voiceovers
+   - Create interview-style content
+   - Produce educational podcasts
 
-### 1. Agents (`agents/agents.py`)
+## 🛠️ Customization
 
-The system uses specialized agents for different tasks:
-- Travel guide agents
-- Content generation agents
-- Tool usage agents
+### Adding New Capabilities
+The system is designed to be easily extended. You can add:
+- New research sources
+- Custom processing tools
+- Specialized voice configurations
 
-### 2. Tasks (`tasks/crewAI_tasks.py`)
+## 📈 Future Plans
 
-Tasks define the work each agent needs to perform. Each task includes:
-- A detailed description
-- Expected output format
-- Assigned agent
-
-### 3. Configuration (`config/`)
-
-The config directory contains:
-- `llm_config.py`: LLM provider configurations
-- `settings.py`: Global settings
-- `topics.py`: Topic configurations
-
-### 4. Tools (`tools/`)
-
-Specialized tools for different functionalities:
-- Content generation
-- Travel guidance
-- Ticket searching
-
-## 🔄 Workflow
-
-1. **Initialization**:
-   - Load configuration
-   - Initialize agents
-   - Set up tasks
-
-2. **Execution**:
-   - Agents perform assigned tasks
-   - Tools are utilized as needed
-   - Results are processed
-
-3. **Output**:
-   - Task-specific output
-   - Execution logs (if verbose)
-
-## 🛠️ Customization and Extension
-
-### Adding New Tools
-
-1. Create new tool files in `tools/`:
-```python
-def create_custom_tool():
-    # Tool implementation
-    pass
-```
-
-### Creating New Tasks
-
-1. Add new task definitions in `tasks/crewAI_tasks.py`:
-```python
-def create_custom_task(agent):
-    custom_task = Task(
-        description="Custom task description",
-        expected_output="Expected output format",
-        agent=agent
-    )
-    return custom_task
-```
-
-## 🚀 Deployment
-
-### Local Development
-```bash
-python main.py
-```
-
-### Docker Deployment
-
-1. Create a Dockerfile:
-```dockerfile
-FROM python:3.11-slim
-WORKDIR /app
-COPY . .
-RUN pip install -r requirements.txt
-CMD ["python", "main.py"]
-```
-
-2. Build and run:
-```bash
-docker build -t crewai-backend .
-docker run -e OPENAI_API_KEY=your-key crewai-backend
-```
-
-## 📝 Logging and Monitoring
-
-Enable verbose logging in the Crew initialization:
-```python
-crew = Crew(
-    agents=[...],
-    tasks=[...],
-    verbose=2  # 0=minimal, 1=basic, 2=detailed
-)
-```
+- Additional voice customization options
+- More research sources integration
+- Enhanced content processing capabilities
+- Improved audio production features
 
 ## 🤝 Contributing
 
-1. Fork the repository
-2. Create a feature branch
-3. Commit changes
-4. Push to the branch
-5. Create a Pull Request
+We welcome contributions! Whether it's:
+- Adding new features
+- Improving documentation
+- Fixing bugs
+- Suggesting enhancements
+
+Please feel free to submit pull requests or open issues.
 
 ## 📄 License
 
-This project is licensed under the MIT License - see the LICENSE file for details. 
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+## 🙏 Acknowledgments
+
+- CrewAI framework
+- ElevenLabs for voice generation
+- SerperDev for research capabilities
+- OpenAI for AI processing 

@@ -8,7 +8,7 @@ Handles both readout and Q&A segments with different voices.
 
 from crewai_tools import BaseTool
 from pydantic.v1 import BaseModel, Field
-from typing import List, Optional, Dict, Type
+from typing import List, Optional, Dict, Type, ClassVar
 import os
 from elevenlabs.client import ElevenLabs
 
@@ -27,13 +27,23 @@ class VoiceoverRequestSchema(BaseModel):
 
 class ElevenLabsVoiceoverTool(BaseTool):
     """Tool for generating podcast segment voiceovers"""
+    
+    # Add model config to allow arbitrary types
+    model_config = {
+        "arbitrary_types_allowed": True
+    }
+    
     name: str = "ElevenLabs Voiceover Tool"
     description: str = "Generates voiceovers for podcast segments"
     args_schema: Type[VoiceoverRequestSchema] = VoiceoverRequestSchema
+    
+    # Instance variables need to be declared as class variables with types
+    client: ElevenLabs = None
+    model_id: str = "eleven_monolingual_v1"
 
-    # Voice IDs for different roles
-    VOICE_IDS = {
-        "host": "voice_id_for_host",
+    # Voice IDs with type annotation
+    VOICE_IDS: ClassVar[Dict[str, str]] = {
+        "host": "Rc9yNQZlJL2KQBPZR6HM",
         "expert": "voice_id_for_expert",
         "readout": "voice_id_for_readout"
     }
@@ -44,7 +54,6 @@ class ElevenLabsVoiceoverTool(BaseTool):
         if not api_key:
             raise ValueError("ELEVENLABS_API_KEY environment variable not set")
         self.client = ElevenLabs(api_key=api_key)
-        self.model_id = "eleven_monolingual_v1"  # Default model
 
     def _run(
         self, 
@@ -67,35 +76,21 @@ class ElevenLabsVoiceoverTool(BaseTool):
             if not voice_id:
                 raise ValueError(f"Invalid voice role: {voice_role}")
 
-            # Set up generation parameters
-            params = {
-                "text": text,
-                "model_id": self.model_id,
-                "voice_settings": {
-                    "stability": 0.75,
-                    "similarity_boost": 0.75
-                }
-            }
-
-            # Add previous segment IDs if provided
-            if previous_segment_ids:
-                params["previous_request_ids"] = previous_segment_ids
-
-            # Generate audio using the client
+            # Generate audio using the client with minimal parameters
             response = self.client.generate(
                 text=text,
-                voice_id=voice_id,
-                model_id=self.model_id,
-                voice_settings=params["voice_settings"]
+                voice=voice_id
             )
 
+            # Convert generator to bytes
+            audio_data = b''.join(response)
+
             return {
-                "audio": response,
+                "audio": audio_data,
                 "segment_info": {
                     "type": segment_type,
                     "role": voice_role,
-                    "length": len(text),
-                    "request_id": response.request_id  # For continuity in next segments
+                    "length": len(text)
                 }
             }
 
@@ -285,3 +280,55 @@ class ElevenLabsVoiceoverTool(BaseTool):
                 ]
             }
         }
+
+    def test_simple_voiceover(
+        self, 
+        text: str, 
+        output_path: str = "test_output.mp3",
+        voice_id: Optional[str] = None
+    ) -> Dict:
+        """
+        Simple test method to generate and save a voiceover file
+
+        Args:
+            text: The text to convert to speech
+            output_path: Path where to save the mp3 file (default: test_output.mp3)
+            voice_id: Optional voice ID to use (defaults to host voice if not provided)
+
+        Returns:
+            Dict containing status and file path if successful
+        """
+        try:
+            # Validate text is not empty
+            if not text.strip():
+                return {
+                    "status": "error",
+                    "message": "Text cannot be empty"
+                }
+
+            # Use provided voice_id or default to host voice
+            voice_id = voice_id or self.VOICE_IDS["host"]
+            
+            # Generate audio using the client with minimal parameters
+            response = self.client.generate(
+                text=text,
+                voice=voice_id
+            )
+
+            # Save the audio to file - handle generator response
+            with open(output_path, 'wb') as f:
+                for chunk in response:
+                    f.write(chunk)
+
+            return {
+                "status": "success",
+                "file_path": output_path,
+                "message": f"Audio file saved to {output_path}",
+                "voice_id": voice_id
+            }
+
+        except Exception as e:
+            return {
+                "status": "error",
+                "message": str(e)
+            }

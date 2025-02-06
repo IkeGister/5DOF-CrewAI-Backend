@@ -3,17 +3,27 @@ Gista General Tools Module
 =========================
 
 Collection of tool combinations specifically designed for Gista tasks.
-Each tool includes specialized website-specific research capabilities.
+Each tool includes specialized website-specific research capabilities
+and podcast generation tools.
 """
 
 from crewai_tools import BaseTool
 from crewai_tools import (
     SerperDevTool,
     ScrapeWebsiteTool,
-    WebsiteSearchTool
+    WebsiteSearchTool,
+    CSVSearchTool,
+    DOCXSearchTool,
+    PDFSearchTool,
+    DirectoryReadTool
 )
 from typing import List, Optional, Type, Dict
 from pydantic.v1 import BaseModel, Field
+
+# Import Gista-specific tools
+from .script_parser_tool import ScriptParserTool
+from .transcription_tool import TranscriptionTool
+from .elevenLabs_voiceover_tool import ElevenLabsVoiceoverTool
 
 # Base Schema
 class WebResearchSchema(BaseModel):
@@ -181,39 +191,79 @@ class NewsResearchTool(BaseTool):
 
 # Updated GistaToolbox
 class GistaToolbox:
-    """Collection of all Gista research tools"""
+    """Collection of all Gista research and podcast generation tools"""
     
     def __init__(self):
+        # Research Tools
         self.wikipedia = WikipediaResearchTool()
         self.dictionary = DictionaryTool()
         self.academic = AcademicSearchTool()
         self.technical = TechnicalDocsTool()
         self.news = NewsResearchTool()
+        
+        # Podcast Generation Tools
+        self.script_parser = ScriptParserTool()
+        self.transcription = TranscriptionTool()
+        self.voiceover = ElevenLabsVoiceoverTool()
+        
+        # Content Extraction Tools
+        self.web_scraper = ScrapeWebsiteTool()
+        self.csv_reader = CSVSearchTool()
+        self.docx_reader = DOCXSearchTool()
+        self.pdf_reader = PDFSearchTool()
+        self.directory_reader = DirectoryReadTool()
 
     def get_tool_by_task(self, task_type: str) -> Optional[BaseTool]:
         """Returns appropriate tool based on task type"""
         tool_mapping = {
+            # Research tools
             "wikipedia": self.wikipedia,
             "dictionary": self.dictionary,
             "academic": self.academic,
             "technical": self.technical,
-            "news": self.news
+            "news": self.news,
+            
+            # Podcast generation tools
+            "script_parsing": self.script_parser,
+            "transcription": self.transcription,
+            "voiceover": self.voiceover,
+            
+            # Content Extraction Tools
+            "web_scraper": self.web_scraper,
+            "csv_reader": self.csv_reader,
+            "docx_reader": self.docx_reader,
+            "pdf_reader": self.pdf_reader,
+            "directory_reader": self.directory_reader
         }
         return tool_mapping.get(task_type)
 
-    def list_available_tools(self) -> List[str]:
-        """Returns list of available tools"""
-        return [
-            "Wikipedia Research Tool",
-            "Dictionary Tool",
-            "Academic Search Tool",
-            "Technical Documentation Tool",
-            "News Research Tool"
-        ]
+    def list_available_tools(self) -> Dict[str, List[str]]:
+        """Returns list of available tools by category"""
+        return {
+            "research_tools": [
+                "Wikipedia Research Tool",
+                "Dictionary Tool",
+                "Academic Search Tool",
+                "Technical Documentation Tool",
+                "News Research Tool"
+            ],
+            "podcast_tools": [
+                "Script Parser Tool",
+                "Transcription Tool",
+                "ElevenLabs Voiceover Tool"
+            ],
+            "content_extraction_tools": [
+                "Web Scraper Tool",
+                "CSV Reader Tool",
+                "DOCX Reader Tool",
+                "PDF Reader Tool",
+                "Directory Reader Tool"
+            ]
+        }
 
     def get_all_research_results(self, query: str, max_results: int = 3) -> Dict:
         """
-        Perform research across all available tools
+        Perform research across all available research tools
         
         Args:
             query: Search query
@@ -233,3 +283,59 @@ class GistaToolbox:
                 results[tool_name] = f"Error: {str(e)}"
         
         return results
+
+    def process_podcast_script(
+        self,
+        script_content: str,
+        generate_audio: bool = True,
+        generate_transcript: bool = True
+    ) -> Dict:
+        """
+        Process a podcast script through the available podcast tools
+        
+        Args:
+            script_content: The markdown formatted podcast script
+            generate_audio: Whether to generate audio using ElevenLabs
+            generate_transcript: Whether to generate a transcript
+            
+        Returns:
+            Dictionary containing processing results
+        """
+        results = {}
+        
+        try:
+            # Parse script
+            parsed_result = self.script_parser._run(script_content)
+            results["parsed_script"] = parsed_result
+            
+            # Generate audio if requested
+            if generate_audio:
+                audio_segments = []
+                for segment in parsed_result["segments"]:
+                    audio = self.voiceover._run(
+                        text=segment.text,
+                        voice_role=segment.voice_role,
+                        segment_type=segment.segment_type
+                    )
+                    audio_segments.append(audio)
+                results["audio_segments"] = audio_segments
+            
+            # Generate transcript if requested
+            if generate_transcript:
+                transcript = self.transcription._run(
+                    segments=parsed_result["segments"],
+                    metadata=parsed_result["metadata"],
+                    format_type="clean"
+                )
+                results["transcript"] = transcript
+            
+            return {
+                "status": "success",
+                "results": results
+            }
+            
+        except Exception as e:
+            return {
+                "status": "error",
+                "message": str(e)
+            }
