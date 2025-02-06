@@ -38,7 +38,7 @@ CrewAI/
 git clone <repository-url>
 cd CrewAI
 ```
-
+ ok
 2. Set up your environment:
 ```bash
 python -m venv venv

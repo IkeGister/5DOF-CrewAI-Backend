@@ -109,3 +109,7 @@ The tool includes a test interface that:
     "message": "Error description"
 }
 ```
+
+
+i want to assign the tools needed for def create_script_production_tasks(agents). ideally this department will work with the organized text lifted from the website, pdf or webscrapped url. which means the data they will work with will be text, probably in markdown form for clarity. Lets create a segmentCreationTool that takes a readout script and creates a segment datatype. this segment datatype will have the following properties. segmentNumber: (readout will always be segment 1) then each q&A segemnt will be from segment 2...(n) to use this tool we may need to define a segment creation task that will be paired with the segmentCreationTool. The idea behind this is that an agent who
+
