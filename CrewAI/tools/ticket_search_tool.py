@@ -91,27 +91,4 @@ class TicketSearchTool(BaseTool):
             "preferred_flight": preferred_flight,
             "flexible_dates": flexible_dates
         }
-        return travel_details
-
-# Example usage
-ticket_search_tool = TicketSearchTool()
-results = ticket_search_tool.run(
-    full_name="John Doe",
-    email="john.doe@example.com",
-    traveling_from="Los Angeles",
-    traveling_to="New York",
-    travel_date="2023-10-15",
-    return_date="2023-10-20",
-    flight_class="Economy",
-    luggage_number=2,
-    travel_companions=1,
-    companion_type="Pet",
-    pet_type="Dog",
-    preferred_flight="Direct"
-)
-for result in results:
-    print(result)
-
-print("Current Environment Variables in Test:")
-for key, value in os.environ.items():
-    print(f"{key}: {value}") 
+        return travel_details 

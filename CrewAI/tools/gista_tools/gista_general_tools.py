@@ -17,7 +17,7 @@ from crewai_tools import (
     PDFSearchTool,
     DirectoryReadTool
 )
-from typing import List, Optional, Type, Dict
+from typing import List, Optional, Type, Dict, ClassVar, Any
 from pydantic.v1 import BaseModel, Field
 
 # Import Gista-specific tools
@@ -43,25 +43,23 @@ class WikipediaResearchTool(BaseTool):
     args_schema: Type[BaseModel] = WebResearchSchema
     base_url: str = "https://wikipedia.org"
 
-    def __init__(self):
-        super().__init__()
-        self.scraper = ScrapeWebsiteTool()
-        self.web_search = WebsiteSearchTool()
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        # Initialize with fixed URLs for Wikipedia
+        self._scraper = ScrapeWebsiteTool()
+        self._web_search = WebsiteSearchTool(website=self.base_url)
 
     def _run(self, query: str, max_results: int = 5, language: str = "en") -> dict:
-        """
-        Search Wikipedia and extract relevant information
-        """
+        """Search Wikipedia and extract relevant information"""
         wiki_url = f"https://{language}.wikipedia.org/wiki/"
-        search_results = self.web_search._run(
-            f"site:wikipedia.org {query}",
-            max_results=max_results
+        search_results = self._web_search._run(
+            search_query=f"site:wikipedia.org {query}"
         )
         
         detailed_content = {}
         for url in search_results[:max_results]:
             if wiki_url in url:
-                content = self.scraper._run(url)
+                content = self._scraper._run(website_url=url)
                 detailed_content[url] = content
 
         return {
@@ -75,16 +73,16 @@ class DictionaryTool(BaseTool):
     description: str = "Looks up terms in various dictionaries"
     args_schema: Type[BaseModel] = WebResearchSchema
     
-    DICTIONARY_SOURCES = {
+    DICTIONARY_SOURCES: ClassVar[Dict[str, str]] = {
         "merriam_webster": "https://www.merriam-webster.com/dictionary/",
         "oxford": "https://www.lexico.com/definition/",
         "cambridge": "https://dictionary.cambridge.org/dictionary/english/"
     }
 
-    def __init__(self):
-        super().__init__()
-        self.scraper = ScrapeWebsiteTool()
-        self.web_search = WebsiteSearchTool()
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self._scraper = ScrapeWebsiteTool()
+        self._web_search = WebsiteSearchTool()
 
     def _run(self, query: str, max_results: int = 3, language: str = "en") -> dict:
         """
@@ -94,7 +92,7 @@ class DictionaryTool(BaseTool):
         for source, base_url in self.DICTIONARY_SOURCES.items():
             try:
                 url = f"{base_url}{query.lower().replace(' ', '-')}"
-                content = self.scraper._run(url)
+                content = self._scraper._run(website_url=url)
                 definitions[source] = content
             except Exception as e:
                 definitions[source] = f"Error: {str(e)}"
@@ -107,16 +105,16 @@ class AcademicSearchTool(BaseTool):
     description: str = "Searches academic sources and research papers"
     args_schema: Type[BaseModel] = WebResearchSchema
     
-    ACADEMIC_SOURCES = {
+    ACADEMIC_SOURCES: ClassVar[Dict[str, str]] = {
         "google_scholar": "https://scholar.google.com",
         "semantic_scholar": "https://www.semanticscholar.org",
         "arxiv": "https://arxiv.org/search/"
     }
 
-    def __init__(self):
-        super().__init__()
-        self.serper_tool = SerperDevTool()
-        self.web_search = WebsiteSearchTool()
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self._serper_tool = SerperDevTool()
+        self._web_search = WebsiteSearchTool()
 
     def _run(self, query: str, max_results: int = 5, language: str = "en") -> dict:
         """
@@ -125,7 +123,7 @@ class AcademicSearchTool(BaseTool):
         results = {}
         for source in self.ACADEMIC_SOURCES:
             search_query = f"site:{self.ACADEMIC_SOURCES[source]} {query}"
-            results[source] = self.serper_tool._run(search_query)
+            results[source] = self._serper_tool._run(search_query=search_query)
 
         return {"academic_results": results}
 
@@ -135,17 +133,17 @@ class TechnicalDocsTool(BaseTool):
     description: str = "Searches technical documentation and references"
     args_schema: Type[BaseModel] = WebResearchSchema
     
-    TECH_SOURCES = {
+    TECH_SOURCES: ClassVar[Dict[str, str]] = {
         "stack_overflow": "https://stackoverflow.com/search?q=",
         "developer_mozilla": "https://developer.mozilla.org/en-US/search?q=",
         "github": "https://github.com/search?q=",
         "readthedocs": "https://readthedocs.org/search/?q="
     }
 
-    def __init__(self):
-        super().__init__()
-        self.web_search = WebsiteSearchTool()
-        self.scraper = ScrapeWebsiteTool()
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self._web_search = WebsiteSearchTool()
+        self._scraper = ScrapeWebsiteTool()
 
     def _run(self, query: str, max_results: int = 5, language: str = "en") -> dict:
         """
@@ -153,9 +151,8 @@ class TechnicalDocsTool(BaseTool):
         """
         tech_results = {}
         for source, base_url in self.TECH_SOURCES.items():
-            search_results = self.web_search._run(
-                f"site:{base_url} {query}",
-                max_results=max_results
+            search_results = self._web_search._run(
+                search_query=f"site:{base_url} {query}"
             )
             tech_results[source] = search_results
 
@@ -167,16 +164,16 @@ class NewsResearchTool(BaseTool):
     description: str = "Searches news sources for current information"
     args_schema: Type[BaseModel] = WebResearchSchema
     
-    NEWS_SOURCES = {
+    NEWS_SOURCES: ClassVar[Dict[str, str]] = {
         "reuters": "https://www.reuters.com",
         "ap_news": "https://apnews.com",
         "bbc": "https://www.bbc.com/news",
         "bloomberg": "https://www.bloomberg.com"
     }
 
-    def __init__(self):
-        super().__init__()
-        self.serper_tool = SerperDevTool()
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self._serper_tool = SerperDevTool()
 
     def _run(self, query: str, max_results: int = 5, language: str = "en") -> dict:
         """
@@ -185,9 +182,68 @@ class NewsResearchTool(BaseTool):
         news_results = {}
         for source in self.NEWS_SOURCES:
             search_query = f"site:{self.NEWS_SOURCES[source]} {query}"
-            news_results[source] = self.serper_tool._run(search_query)
+            news_results[source] = self._serper_tool._run(search_query=search_query)
 
         return {"news_results": news_results}
+
+class EnhancedWebSearchTool(BaseTool):
+    """Enhanced web search tool with better error handling and formatting"""
+    name: str = "Enhanced Web Search"
+    description: str = "An advanced tool that searches the internet using Google Search API to find relevant information about any topic, with improved error handling and result formatting."
+    
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self._serper_tool = SerperDevTool()
+
+    def _run(
+        self,
+        query: str,
+        max_results: int = 5,
+        **kwargs: Any,
+    ) -> str:
+        """
+        Execute the web search with enhanced error handling and formatting
+        
+        Args:
+            query: The search query
+            max_results: Maximum number of results to return
+            
+        Returns:
+            Formatted string containing search results or error message
+        """
+        try:
+            # Use the base SerperDevTool to perform the search
+            raw_results = self._serper_tool._run(search_query=query)
+            
+            # If we got an error message back
+            if isinstance(raw_results, str) and "error" in raw_results.lower():
+                return raw_results
+                
+            # Extract and format the results
+            formatted_results = []
+            result_lines = raw_results.split('\n')
+            
+            current_result = []
+            for line in result_lines:
+                if line.strip() == "---":
+                    if current_result:
+                        formatted_results.append('\n'.join(current_result))
+                        current_result = []
+                    if len(formatted_results) >= max_results:
+                        break
+                elif line.strip():
+                    current_result.append(line)
+            
+            if not formatted_results:
+                return f"No results found for query: {query}"
+            
+            return (
+                f"\nTop {len(formatted_results)} search results for '{query}':\n\n" +
+                "\n\n".join(formatted_results)
+            )
+            
+        except Exception as e:
+            return f"Error performing enhanced web search: {str(e)}"
 
 # Updated GistaToolbox
 class GistaToolbox:
@@ -200,6 +256,7 @@ class GistaToolbox:
         self.academic = AcademicSearchTool()
         self.technical = TechnicalDocsTool()
         self.news = NewsResearchTool()
+        self.web_search = EnhancedWebSearchTool()
         
         # Podcast Generation Tools
         self.script_parser = ScriptParserTool()
@@ -222,6 +279,7 @@ class GistaToolbox:
             "academic": self.academic,
             "technical": self.technical,
             "news": self.news,
+            "web_search": self.web_search,
             
             # Podcast generation tools
             "script_parsing": self.script_parser,
@@ -245,7 +303,8 @@ class GistaToolbox:
                 "Dictionary Tool",
                 "Academic Search Tool",
                 "Technical Documentation Tool",
-                "News Research Tool"
+                "News Research Tool",
+                "Enhanced Web Search Tool"
             ],
             "podcast_tools": [
                 "Script Parser Tool",

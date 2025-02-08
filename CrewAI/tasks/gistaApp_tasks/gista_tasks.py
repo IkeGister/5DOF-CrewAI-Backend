@@ -1,93 +1,91 @@
 """
-Gista App Tasks Module
-=====================
+Gista App Tasks Module - Workflow Sequence
+========================================
 
-This module defines the tasks for the Gista App workflow, organized by department.
-Each task is assigned to specific agents and follows the workflow progression
-from content assessment through final delivery.
+1. Content Validation & Assessment
+   - prepare_content (content extraction)
+   - approve_content/reject_content (user feedback)
+
+2. Content Research & Analysis
+   - start_production_pipeline (research preparation)
+   - content_analysis (structure & concepts)
+   - terminology_analysis (technical terms)
+   - background_research (verification)
+   - content_presentation (synthesis)
+   Tools used:
+   - Enhanced web search (SerperDev)
+   - Wikipedia research
+   - Dictionary lookups
+
+3. Script Production
+   - readout_script
+   - qa_script
+   - transitions
+
+4. Voice Generation
+   - parse_script
+   - generate_audio
+   - generate_transcript
 """
 
 from crewai import Task
 from tools.gista_tools.gista_general_tools import GistaToolbox
+from pydantic import BaseModel
+from typing import List, Optional, Dict, Any
 
-def create_voice_generation_tasks(agents):
-    """
-    Create tasks for voice generation workflow
-    
-    Args:
-        agents: Dictionary containing voice generation agents
-        
-    Returns:
-        list: List of voice generation tasks with their specific tools
-    """
-    
-    # Initialize toolbox
-    gista_tools = GistaToolbox()
-    
-    parse_script = Task(
-        description=(
-            "Convert podcast script from markdown format into structured segments.\n"
-            "1. Extract metadata (title, source, etc.)\n"
-            "2. Identify voice roles and segment types\n"
-            "3. Parse pause and emphasis markers\n"
-            "4. Maintain proper segment ordering"
-        ),
-        expected_output=(
-            "JSON formatted segment data containing:\n"
-            "- Metadata with title and source information\n"
-            "- List of segments with voice roles and text\n"
-            "- Properly marked pauses and emphasis points"
-        ),
-        agent=agents["parser"],
-        tools=[gista_tools.script_parser]  # Get tool from toolbox
-    )
-    
-    generate_audio = Task(
-        description=(
-            "Generate audio segments using ElevenLabs voices.\n"
-            "1. Use appropriate voice for each role (host/expert/readout)\n"
-            "2. Maintain consistent voice across segments\n"
-            "3. Apply proper pacing using pause markers\n"
-            "4. Handle emphasis points naturally"
-        ),
-        expected_output=(
-            "List of audio segment files with:\n"
-            "- Proper voice role assignment\n"
-            "- Natural pacing and emphasis\n"
-            "- Consistent audio quality"
-        ),
-        agent=agents["generator"],
-        tools=[gista_tools.voiceover]  # Get tool from toolbox
-    )
-    
-    generate_transcript = Task(
-        description=(
-            "Create clean transcript from podcast script with proper "
-            "speaker attribution and formatting.\n"
-            "1. Include clear speaker identification\n"
-            "2. Maintain proper segmentation\n"
-            "3. Preserve metadata and source information"
-        ),
-        expected_output=(
-            "Formatted transcript document with:\n"
-            "- Clear speaker identification\n"
-            "- Proper segmentation\n"
-            "- Complete metadata"
-        ),
-        agent=agents["transcriber"],
-        tools=[gista_tools.transcription],  # Get tool from toolbox
-        context={
-            "depends_on": parse_script,
-            "format_type": "clean"
-        }
-    )
-    
-    return [parse_script, generate_audio, generate_transcript]
+# First, let's define our output models
+class ContentAnalysisOutput(BaseModel):
+    content_map: Dict
+    relationship_map: Dict
+    analysis_metrics: Dict
 
-def create_content_assessment_tasks(agents):
-    """Create tasks for the Content Assessment Department"""
+class TerminologyAnalysisOutput(BaseModel):
+    technical_glossary: List[Dict]
+    concept_groups: List[Dict]
+    explanation_strategy: Dict
+
+class ContentValidationOutput(BaseModel):
+    status: str
+    content_status: str
+    metadata: Dict
+    content_validation: Dict
+    content_complexity: Dict
+    extracted_content: Dict
+    processing_info: Dict
+
+class TaskOutput(BaseModel):
+    status: str
+    qa_validation: Optional[Dict]
+    content_analysis: Optional[Dict]
+    script_generation: Optional[Dict]
+
+# Add new output models
+class ScriptOutput(BaseModel):
+    """Structured output for podcast script segments"""
+    segment_type: str  # 'opening', 'readout', 'expert_intro', 'qa', 'closing'
+    script_content: Dict[str, str]  # Keyed by speaker role ('host', 'expert')
+    transitions: Dict[str, str]  # Entry/exit transitions for this segment
+    technical_terms: List[Dict[str, str]]  # Terms with pronunciations
+    segment_metadata: Dict[str, Any] = {
+        'duration_estimate': float,
+        'voice_roles': List[str],
+        'emphasis_points': List[Dict],
+        'pause_markers': List[Dict],
+        'segment_index': Optional[int]  # For Q&A segments
+    }
+    references: Optional[List[Dict]] = None  # Citations and sources
+    qa_context: Optional[Dict] = None  # For Q&A segments only
+
+class AudioOutput(BaseModel):
+    audio_files: List[str]
+    segment_info: List[Dict]
+    technical_details: Dict
+    quality_metrics: Dict
+
+# 1. Content Assessment Tasks
+def create_user_content_validation_tasks(agents):
+    """Initial content validation and user response tasks"""
     
-    # Initialize toolbox
     gista_tools = GistaToolbox()
     
     prepare_content = Task(
@@ -100,98 +98,29 @@ def create_content_assessment_tasks(agents):
                 "- Word documents (using docx_reader)\n"
                 "- CSV files (using csv_reader)\n"
                 "- Local directories (using directory_reader)\n"
-            "3. Structure the output data:\n"
-                "a) Top-level Information:\n"
-                    "- status: success/failure\n"
-                    "- content_status: REJECTED/NEEDS_REVIEW/CLEARED\n"
-                "b) Metadata:\n"
-                    "- title, author, publication_date, source, url\n"
-                    "- content_metrics:\n"
-                        "* estimated_read_time\n"
-                        "* estimated_word_count\n"
-                        "* estimated_listening_times (slow/normal/fast/recommended)\n"
-                        "* estimated_final_duration\n"
-                "c) Content Validation Flags:\n"
-                    "- is_image_only: true/false\n"
-                    "- has_text_content: true/false\n"
-                    "- estimated_word_count: number\n"
-                    "- contains_code_blocks: true/false\n"
-                    "- is_audio_file: true/false\n"
-                    "- is_video_content: true/false\n"
-                "d) Content Complexity:\n"
-                    "- technical_terms_count\n"
-                    "- average_sentence_length\n"
-                    "- recommended_speaking_pace\n"
-                    "- content_type\n"
-                "e) Extracted Content:\n"
-                    "- raw_text\n"
-                    "- sections with position and duration\n"
-                    "- removed_elements log\n"
-                "f) Processing Info:\n"
-                    "- tool_used, timestamp, content_hash\n"
-            "4. Set content_status based on validation rules:\n"
-                "- REJECTED if:\n"
-                    "* is_image_only is true\n"
-                    "* has_text_content is false\n"
-                    "* estimated_word_count < 100\n"
-                    "* is_audio_file is true\n"
-                    "* is_video_content is true\n"
-                "- NEEDS_REVIEW if:\n"
-                    "* contains_code_blocks is true\n"
-                    "* estimated_word_count > 5000\n"
-                "- CLEARED otherwise\n"
-            "5. Calculate timing estimates:\n"
-                "- Use standard speaking rates (100-120/130-150/160-180 wpm)\n"
-                "- Account for content complexity\n"
-                "- Include podcast element durations\n"
-                "- Provide section-level timing"
+            "3. Structure the output data\n"
+            "4. Set content_status based on validation rules\n"
+            "5. Calculate timing estimates"
         ),
         expected_output=(
             "A structured JSON document containing:\n"
-            "{\n"
-            "    'status': 'success/failure',\n"
-            "    'content_status': 'REJECTED/NEEDS_REVIEW/CLEARED',\n"
-            "    'metadata': {\n"
-            "        'title': string,\n"
-            "        'author': string,\n"
-            "        'publication_date': date,\n"
-            "        'source': string,\n"
-            "        'url': string,\n"
-            "        'content_metrics': {\n"
-            "            'estimated_read_time': string,\n"
-            "            'estimated_word_count': number,\n"
-            "            'estimated_listening_times': {\n"
-            "                'slow_pace': string,\n"
-            "                'normal_pace': string,\n"
-            "                'fast_pace': string,\n"
-            "                'recommended_pace': string\n"
-            "            },\n"
-            "            'estimated_final_duration': string\n"
-            "        }\n"
-            "    },\n"
-            "    'content_validation': {...},\n"
-            "    'content_complexity': {...},\n"
-            "    'extracted_content': {\n"
-            "        'raw_text': string,\n"
-            "        'sections': [{\n"
-            "            'type': string,\n"
-            "            'content': string,\n"
-            "            'position': number,\n"
-            "            'estimated_duration': string\n"
-            "        }],\n"
-            "        'removed_elements': [...]\n"
-            "    },\n"
-            "    'processing_info': {...}\n"
-            "}"
+            "- Status and content_status\n"
+            "- Complete metadata\n"
+            "- Content validation flags\n"
+            "- Content complexity metrics\n"
+            "- Extracted content sections\n"
+            "- Processing information"
         ),
-        agent=agents["content_assessment"]["doc_assessor"],
+        agent=agents["doc_assessor"],
         tools=[
-            gista_tools.web_scraper,   # For web pages
-            gista_tools.pdf_reader,    # For PDFs
-            gista_tools.docx_reader,   # For Word docs
-            gista_tools.csv_reader,    # For CSV files
-            gista_tools.directory_reader  # For local files
-        ]
+            gista_tools.web_scraper,   # Content extraction tools
+            gista_tools.pdf_reader,
+            gista_tools.docx_reader,
+            gista_tools.csv_reader,
+            gista_tools.directory_reader
+        ],
+        output_pydantic=ContentValidationOutput,
+        callback=task_completed_callback
     )
     
     approve_content = Task(
@@ -199,37 +128,58 @@ def create_content_assessment_tasks(agents):
             "Process CLEARED or NEEDS_REVIEW content for quick approval response:\n"
             "1. Verify content_status from prepare_content output\n"
             "2. Generate appropriate approval message\n"
-            "3. Prepare user notification with initial timeline estimate"
+            "3. Prepare user notification with initial timeline estimate\n"
+            "4. Set workflow type (standard/special_review)"
         ),
         expected_output=(
             "A structured JSON document containing:\n"
-            "{\n"
-            "    'status': 'approved',\n"
-            "    'workflow_type': 'standard|special_review',\n"
-            "    'content_info': {\n"
-            "        'title': string,\n"
-            "        'source': string,\n"
-            "        'content_hash': string\n"
-            "    },\n"
-            "    'approval_details': {\n"
-            "        'approval_timestamp': datetime,\n"
-            "        'initial_assessment': string,\n"
-            "        'estimated_completion': string\n"
-            "    },\n"
-            "    'ui_message': {\n"
-            "        'short_message': string,  # e.g., 'Content approved for podcast production'\n"
-            "        'detailed_message': string,  # e.g., 'Your content is now being processed...'\n"
-            "        'next_steps': string  # e.g., 'You will be notified when...'\n"
-            "    }\n"
-            "}"
+            "- Status (approved)\n"
+            "- Workflow type\n"
+            "- Content information\n"
+            "- Approval details\n"
+            "- UI messages"
         ),
-        agent=agents["content_assessment"]["doc_assessor"],
-        tools=[],  # No tools needed for quick approval
-        context={
-            "depends_on": "prepare_content"
-        }
+        agent=agents["doc_assessor"],
+        tools=[],  # TODO: Implement notification and messaging tools
+        context=[prepare_content],
+        output_pydantic=ContentValidationOutput,
+        callback=task_completed_callback
     )
+    
+    reject_content = Task(
+        description=(
+            "Process REJECTED content and prepare rejection response:\n"
+            "1. Extract rejection reason from prepare_content output\n"
+            "2. Generate appropriate rejection message based on content_validation flags:\n"
+                "- Image-only content\n"
+                "- Audio/video content\n"
+                "- Insufficient text content\n"
+            "3. Include alternative suggestions if applicable\n"
+            "4. Prepare response for user interface"
+        ),
+        expected_output=(
+            "A structured JSON document containing:\n"
+            "- Status (rejected)\n"
+            "- Original content information\n"
+            "- Rejection details\n"
+            "- UI messages"
+        ),
+        agent=agents["doc_assessor"],
+        tools=[],  # TODO: Implement notification and messaging tools
+        context=[prepare_content],
+        output_pydantic=ContentValidationOutput,
+        callback=task_completed_callback
+    )
+    
+    return [prepare_content, approve_content, reject_content]
 
+def create_user_content_research_tasks(agents, validation_tasks):
+    """Research preparation and initial analysis tasks"""
+    
+    gista_tools = GistaToolbox()
+    prepare_content = validation_tasks[0]
+    approve_content = validation_tasks[1]
+    
     start_production_pipeline = Task(
         description=(
             "Initialize content analysis pipeline for approved content:\n"
@@ -245,506 +195,162 @@ def create_content_assessment_tasks(agents):
         ),
         expected_output=(
             "A structured JSON document containing:\n"
-            "{\n"
-            "    'original_content': {\n"
-            "        'raw_text': string,\n"
-            "        'metadata': {\n"
-            "            'title': string,\n"
-            "            'author': string,\n"
-            "            'publication_date': string,\n"
-            "            'source': string,\n"
-            "            'url': string,\n"
-            "            'content_hash': string\n"
-            "        }\n"
-            "    },\n"
-            "    'analysis_preparation': {\n"
-            "        'content_analysis_input': {\n"
-            "            'sections': [{\n"
-            "                'id': string,\n"
-            "                'text': string,\n"
-            "                'type': string,\n"
-            "                'position': number\n"
-            "            }],\n"
-            "            'preliminary_terms': [{\n"
-            "                'term': string,\n"
-            "                'location': {\n"
-            "                    'section_id': string,\n"
-            "                    'position': number\n"
-            "                }\n"
-            "            }],\n"
-            "            'potential_quotes': [{\n"
-            "                'text': string,\n"
-            "                'speaker': string,\n"
-            "                'section_id': string\n"
-            "            }]\n"
-            "        },\n"
-            "        'terminology_flags': [{\n"
-            "            'term': string,\n"
-            "            'context': string,\n"
-            "            'requires_research': boolean\n"
-            "        }],\n"
-            "        'research_targets': [{\n"
-            "            'claim': string,\n"
-            "            'type': 'factual|statistical|technical',\n"
-            "            'verification_priority': number  # 1-10\n"
-            "        }]\n"
-            "    },\n"
-            "    'special_requirements': [{\n"
-            "        'type': string,\n"
-            "        'description': string,\n"
-            "        'handling_instructions': string\n"
-            "    }]\n"
-            "}"
+            "- Original content with metadata\n"
+            "- Analysis preparation data:\n"
+                "* Content sections for analysis\n"
+                "* Preliminary technical terms\n"
+                "* Potential quotes\n"
+            "- Terminology flags\n"
+            "- Research targets\n"
+            "- Special handling requirements"
         ),
-        agent=agents["content_assessment"]["doc_assessor"],
-        tools=[gista_tools.technical],  # For initial technical assessment
-        context={
-            "depends_on": ["prepare_content", "approve_content"]
-        }
-    )
-
-    reject_content = Task(
-        description=(
-            "Process REJECTED content and prepare rejection response:\n"
-            "1. Extract rejection reason from prepare_content output\n"
-            "2. Generate appropriate rejection message based on content_validation flags:\n"
-                "- Image-only content\n"
-                "- Audio/video content\n"
-                "- Insufficient text content\n"
-            "3. Include alternative suggestions if applicable\n"
-            "4. Prepare response for user interface"
-        ),
-        expected_output=(
-            "A structured JSON document containing:\n"
-            "{\n"
-            "    'status': 'rejected',\n"
-            "    'original_content': {\n"
-            "        'url': string,\n"
-            "        'title': string,\n"
-            "        'content_hash': string\n"
-            "    },\n"
-            "    'rejection_details': {\n"
-            "        'primary_reason': string,\n"
-            "        'validation_flags': {\n"
-            "            'is_image_only': boolean,\n"
-            "            'is_audio_file': boolean,\n"
-            "            'is_video_content': boolean,\n"
-            "            'has_text_content': boolean,\n"
-            "            'word_count': number\n"
-            "        },\n"
-            "        'explanation': string,\n"
-            "        'suggestions': [{\n"
-            "            'type': string,\n"
-            "            'description': string\n"
-            "        }]\n"
-            "    },\n"
-            "    'ui_message': {\n"
-            "        'short_message': string,\n"
-            "        'detailed_message': string,\n"
-            "        'action_required': string\n"
-            "    }\n"
-            "}"
-        ),
-        agent=agents["content_assessment"]["doc_assessor"],
-        tools=[],  # No additional tools needed for rejection processing
-        context={
-            "depends_on": "prepare_content"
-        }
-    )
-
-    terminology_analysis = Task(
-        description=(
-            "Analyze and expand technical elements from content analysis:\n"
-            "1. Process technical_elements from content_map:\n"
-                "a) Research each term's definition and usage\n"
-                "b) Identify prerequisite concepts\n"
-                "c) Determine explanation complexity\n"
-                "d) Find common analogies or examples\n"
-            "2. Review concept relationships:\n"
-                "a) Map technical dependencies\n"
-                "b) Identify concept prerequisites\n"
-                "c) Group related technical terms\n"
-            "3. Analyze quotations containing technical terms:\n"
-                "a) Extract technical context\n"
-                "b) Link expert explanations\n"
-            "4. Generate explanation strategies:\n"
-                "a) Basic to advanced progression\n"
-                "b) Analogy mappings\n"
-                "c) Prerequisite ordering"
-        ),
-        expected_output=(
-            "A structured JSON document containing:\n"
-            "{\n"
-            "    'technical_glossary': [{\n"
-            "        'term_id': string,  # from content_analysis\n"
-            "        'term': string,\n"
-            "        'formal_definition': string,\n"
-            "        'simplified_explanation': string,\n"
-            "        'prerequisites': [string],  # term_ids\n"
-            "        'analogies': [{\n"
-            "            'comparison': string,\n"
-            "            'explanation': string\n"
-            "        }],\n"
-            "        'usage_examples': [string],\n"
-            "        'expert_quotes': [string]  # quote_ids from content_analysis\n"
-            "    }],\n"
-            "    'concept_groups': [{\n"
-            "        'group_id': string,\n"
-            "        'theme': string,\n"
-            "        'terms': [string],  # term_ids\n"
-            "        'explanation_order': [string]  # term_ids in optimal order\n"
-            "    }],\n"
-            "    'explanation_strategy': {\n"
-            "        'complexity_progression': [{\n"
-            "            'level': string,\n"
-            "            'terms': [string],  # term_ids\n"
-            "            'approach': string\n"
-            "        }],\n"
-            "        'key_analogies': [{\n"
-            "            'complex_concept': string,  # term_id\n"
-            "            'analogy_chain': [{\n"
-            "                'step': number,\n"
-            "                'explanation': string\n"
-            "            }]\n"
-            "        }]\n"
-            "    }\n"
-            "}"
-        ),
-        agent=agents["content_assessment"]["keyword_analyst"],
+        agent=agents["doc_assessor"],
         tools=[
-            gista_tools.dictionary,     # For definitions
-            gista_tools.technical,      # For technical context
-            gista_tools.academic,       # For academic explanations
-            gista_tools.wikipedia       # For broader context and common explanations
+            gista_tools.web_search,   # Enhanced search for initial research
+            gista_tools.wikipedia,    # For general knowledge
+            gista_tools.dictionary    # For term understanding
         ],
-        context={
-            "depends_on": "content_analysis"
-        }
-    )
-
-    background_research = Task(
-        description=(
-            "Research and validate content from content analysis:\n"
-            "1. Process key_concepts from content_map:\n"
-                "a) Verify factual claims\n"
-                "b) Find supporting research\n"
-                "c) Identify current developments\n"
-            "2. Analyze quoted statistics and claims:\n"
-                "a) Verify accuracy\n"
-                "b) Find original sources\n"
-                "c) Check for updates or corrections\n"
-            "3. Research topic clusters:\n"
-                "a) Gather contextual information\n"
-                "b) Identify key developments\n"
-                "c) Find expert consensus\n"
-            "4. Compile supporting evidence:\n"
-                "a) Academic sources\n"
-                "b) Expert opinions\n"
-                "c) Recent developments"
-        ),
-        expected_output=(
-            "A structured JSON document containing:\n"
-            "{\n"
-            "    'concept_validation': [{\n"
-            "        'concept_id': string,  # from content_analysis\n"
-            "        'verification_status': 'verified|updated|disputed',\n"
-            "        'supporting_evidence': [{\n"
-            "            'source_type': 'academic|expert|news',\n"
-            "            'source': string,\n"
-            "            'relevance_score': number,  # 1-10\n"
-            "            'key_points': [string]\n"
-            "        }],\n"
-            "        'current_context': {\n"
-            "            'recent_developments': [string],\n"
-            "            'expert_consensus': string,\n"
-            "            'industry_impact': string\n"
-            "        }\n"
-            "    }],\n"
-            "    'quote_verification': [{\n"
-            "        'quote_id': string,  # from content_analysis\n"
-            "        'verification_status': 'verified|updated|disputed',\n"
-            "        'original_source': string,\n"
-            "        'context_notes': string,\n"
-            "        'updates_or_corrections': [string]\n"
-            "    }],\n"
-            "    'topic_research': [{\n"
-            "        'cluster_id': string,  # from content_analysis\n"
-            "        'context_summary': string,\n"
-            "        'key_developments': [{\n"
-            "            'date': string,\n"
-            "            'development': string,\n"
-            "            'significance': string\n"
-            "        }],\n"
-            "        'expert_insights': [{\n"
-            "            'expert': string,\n"
-            "            'insight': string,\n"
-            "            'relevance': string\n"
-            "        }]\n"
-            "    }]\n"
-            "}"
-        ),
-        agent=agents["content_assessment"]["research_specialist"],
-        tools=[
-            gista_tools.academic,    # For academic research
-            gista_tools.technical,   # For technical verification
-            gista_tools.news         # For current developments
-        ],
-        context={
-            "depends_on": "content_analysis"
-        }
-    )
-
-    analysis_framework = Task(
-        description=(
-            "Create Q&A framework and analysis structure:\n"
-            "1. Identify key discussion points\n"
-            "2. Structure content flow\n"
-            "3. Develop Q&A pairs\n"
-            "4. Create content breakdown for audio segments"
-        ),
-        expected_output=(
-            "A structured analysis document including:\n"
-            "- Key discussion points\n"
-            "- Q&A framework\n"
-            "- Content flow outline\n"
-            "- Segment breakdown"
-        ),
-        agent=agents["content_assessment"]["analysis_presenter"],
-        tools=[],
+        context=[prepare_content, approve_content],
+        output_pydantic=ContentValidationOutput,
+        callback=task_completed_callback
     )
 
     content_analysis = Task(
         description=(
             "Analyze and structure content for technical assessment:\n"
-            "1. Parse the approved content JSON:\n"
-                "a) Access raw_text from extracted_content\n"
-                "b) Review section breakdowns\n"
-                "c) Consider content complexity metrics\n"
-            "2. Identify and categorize content elements:\n"
-                "a) Key Concepts:\n"
-                    "- Main ideas and theories\n"
-                    "- Core arguments\n"
-                    "- Critical findings\n"
-                "b) Technical Elements:\n"
-                    "- Technical terms and jargon\n"
-                    "- Scientific concepts\n"
-                    "- Methodologies or processes\n"
-                "c) Quotations:\n"
-                    "- Direct quotes with attribution\n"
-                    "- Statistical citations\n"
-                    "- Expert statements\n"
-            "3. Map content relationships:\n"
-                "- Concept hierarchies\n"
-                "- Dependency chains\n"
-                "- Topic clusters"
+            "1. Analyze content structure\n"
+            "2. Map key concepts\n"
+            "3. Identify relationships\n"
+            "4. Create technical framework"
         ),
         expected_output=(
             "A structured JSON document containing:\n"
-            "{\n"
-            "    'content_map': {\n"
-            "        'key_concepts': [{\n"
-            "            'id': string,\n"
-            "            'type': 'main_idea|theory|argument|finding',\n"
-            "            'text': string,\n"
-            "            'location': {\n"
-            "                'section': number,\n"
-            "                'paragraph': number\n"
-            "            },\n"
-            "            'importance_score': number,  # 1-10\n"
-            "            'related_concepts': [string]  # IDs of related concepts\n"
-            "        }],\n"
-            "        'technical_elements': [{\n"
-            "            'id': string,\n"
-            "            'type': 'term|concept|methodology',\n"
-            "            'text': string,\n"
-            "            'context': string,\n"
-            "            'complexity_score': number,  # 1-10\n"
-            "            'requires_explanation': boolean,\n"
-            "            'related_terms': [string]  # IDs of related terms\n"
-            "        }],\n"
-            "        'quotations': [{\n"
-            "            'id': string,\n"
-            "            'type': 'expert_quote|statistic|citation',\n"
-            "            'text': string,\n"
-            "            'speaker': string,\n"
-            "            'context': string,\n"
-            "            'supports_concept': string  # ID of supported concept\n"
-            "        }]\n"
-            "    },\n"
-            "    'relationship_map': {\n"
-            "        'concept_hierarchies': [{\n"
-            "            'parent_id': string,\n"
-            "            'child_ids': [string],\n"
-            "            'relationship_type': string\n"
-            "        }],\n"
-            "        'topic_clusters': [{\n"
-            "            'cluster_id': string,\n"
-            "            'theme': string,\n"
-            "            'elements': [string]  # IDs of related elements\n"
-            "        }]\n"
-            "    },\n"
-            "    'analysis_metrics': {\n"
-            "        'total_concepts': number,\n"
-            "        'technical_density': number,  # percentage\n"
-            "        'complexity_distribution': {\n"
-            "            'basic': number,\n"
-            "            'intermediate': number,\n"
-            "            'advanced': number\n"
-            "        },\n"
-            "        'key_themes': [string]\n"
-            "    }\n"
-            "}"
+            "- Content map with key concepts\n"
+            "- Relationship diagrams\n"
+            "- Technical term identification\n"
+            "- Complexity metrics"
         ),
-        agent=agents["content_assessment"]["keyword_analyst"],
+        agent=agents["keyword_analyst"],
         tools=[
-            gista_tools.technical,    # For technical term identification
-            gista_tools.dictionary    # For term classification
+            gista_tools.web_search,   # Enhanced search for content research
+            gista_tools.wikipedia,    # For concept understanding
+            gista_tools.dictionary    # For term definitions
         ],
-        context={
-            "depends_on": "start_production_pipeline",
-            "required_data": ["analysis_preparation.content_analysis_input"]
-        }
+        context=[start_production_pipeline],
+        output_pydantic=ContentAnalysisOutput
+    )
+    
+    terminology_analysis = Task(
+        description=(
+            "Analyze and expand technical elements from content analysis:\n"
+            "1. Identify technical terms\n"
+            "2. Research definitions\n"
+            "3. Create explanation framework\n"
+            "4. Map term relationships"
+        ),
+        expected_output=(
+            "Technical analysis document containing:\n"
+            "- Comprehensive term glossary\n"
+            "- Term relationships\n"
+            "- Explanation frameworks\n"
+            "- Complexity levels"
+        ),
+        agent=agents["keyword_analyst"],
+        tools=[
+            gista_tools.web_search,   # Enhanced search for term research
+            gista_tools.dictionary,   # For term definitions
+            gista_tools.wikipedia    # For term context
+        ],
+        context=[content_analysis],
+        output_pydantic=TerminologyAnalysisOutput
+    )
+
+    background_research = Task(
+        description=(
+            "Research and validate content from content analysis:\n"
+            "1. Conduct deep research on identified topics\n"
+            "2. Verify all technical claims and statements\n"
+            "3. Provide comprehensive context\n"
+            "4. Document all sources and references"
+        ),
+        expected_output=(
+            "Research document containing:\n"
+            "- Verified claims with sources\n"
+            "- Technical validations\n"
+            "- Contextual information\n"
+            "- Complete reference list"
+        ),
+        agent=agents["research_specialist"],
+        tools=[
+            gista_tools.web_search,   # Enhanced search for deep research
+            gista_tools.wikipedia,    # For background information
+            gista_tools.dictionary    # For term verification
+        ],
+        context=[content_analysis],
+        output_pydantic=ContentValidationOutput
     )
 
     content_presentation = Task(
         description=(
             "Synthesize analyzed content into a structured markdown document for script production:\n"
             "1. Integrate data from multiple sources:\n"
-                "a) content_analysis output:\n"
-                    "- Key concepts and their relationships\n"
-                    "- Technical elements and complexity\n"
-                    "- Important quotations\n"
-                "b) terminology_analysis output:\n"
-                    "- Technical glossary\n"
-                    "- Explanation strategies\n"
-                    "- Concept progressions\n"
-                "c) background_research output:\n"
-                    "- Verified claims and sources\n"
-                    "- Current context\n"
-                    "- Expert insights\n"
-            "2. Structure content for podcast format:\n"
-                "a) Opening Overview:\n"
-                    "- Main topic introduction\n"
-                    "- Key themes preview\n"
-                    "- Complexity level indication\n"
-                "b) Content Progression:\n"
-                    "- Logical concept ordering\n"
-                    "- Technical term introduction points\n"
-                    "- Natural knowledge building\n"
-                "c) Discussion Points:\n"
-                    "- Expert quote placements\n"
-                    "- Statistical evidence positions\n"
-                    "- Explanation opportunities\n"
-            "3. Add markdown emphasis markers:\n"
-                "- **bold** for key terms\n"
-                "- *italic* for emphasis\n"
-                "- `code` for technical terms\n"
-                "- > for quotations\n"
-                "- --- for segment breaks\n"
-                "- // for pause indicators"
+                "a) content_analysis output\n"
+                "b) terminology_analysis output\n"
+                "c) background_research output\n"
+            "2. Structure content for podcast format\n"
+            "3. Add markdown emphasis markers\n"
+            "4. Include technical explanations"
         ),
         expected_output=(
-            "A markdown document structured as:\n"
-            "```markdown\n"
-            "# [Article Title]\n"
-            "Source: [Original Source]\n"
-            "\n"
-            "## Content Overview\n"
-            "- Complexity Level: [basic|intermediate|advanced]\n"
-            "- Estimated Duration: [time]\n"
-            "- Key Themes: [list]\n"
-            "\n"
-            "## Original Content\n"
-            "```json\n"
-            "// Original content and metadata from prepare_content\n"
-            "{\n"
-            "    \"raw_text\": \"full original text\",\n"
-            "    \"metadata\": {...},\n"
-            "    \"sections\": [...]\n"
-            "}\n"
-            "```\n"
-            "\n"
-            "## Analysis Results\n"
-            "```json\n"
-            "// Results from content_analysis, terminology_analysis, and background_research\n"
-            "{\n"
-            "    \"content_map\": {...},\n"
-            "    \"technical_glossary\": {...},\n"
-            "    \"verified_claims\": [...]\n"
-            "}\n"
-            "```\n"
-            "\n"
-            "## Technical Glossary\n"
-            "- `term`: definition // simplified explanation\n"
-            "- `term`: definition // simplified explanation\n"
-            "\n"
-            "## Content Sections\n"
-            "\n"
-            "### 1. Introduction\n"
-            "[Introductory content with *emphasis* and **key terms**]\n"
-            "\n"
-            "### 2. Main Content\n"
-            "[Section content]\n"
-            "> Expert quote with attribution\n"
-            "\n"
-            "#### Technical Explanation Breakout\n"
-            "- Concept: [explanation]\n"
-            "- Analogy: [comparison]\n"
-            "\n"
-            "### 3. Analysis Points\n"
-            "1. [Point with supporting evidence]\n"
-            "2. [Point with expert insight]\n"
-            "\n"
-            "---\n"
-            "\n"
-            "## Production Notes\n"
-            "- Pause Points: [locations]\n"
-            "- Emphasis Guide: [key moments]\n"
-            "- Technical Term Order: [progression]\n"
-            "- Expert Quote Placements: [positions]\n"
-            "\n"
-            "## Reference Data\n"
-            "- Verified Sources: [list]\n"
-            "- Expert Citations: [list]\n"
-            "- Current Context: [updates]\n"
-            "\n"
-            "## Raw Analysis Data\n"
-            "```json\n"
-            "// Complete analysis data for reference\n"
-            "{\n"
-            "    \"content_analysis\": {...},\n"
-            "    \"terminology_analysis\": {...},\n"
-            "    \"background_research\": {...}\n"
-            "}\n"
-            "```\n"
-            "```"
+            "A complete markdown document containing:\n"
+            "- Structured content sections\n"
+            "- Technical term definitions\n"
+            "- Research citations\n"
+            "- Production notes\n"
+            "- Emphasis markers"
         ),
-        agent=agents["content_assessment"]["analysis_presenter"],
-        tools=[],  # No additional tools needed - this is a synthesis task
-        context={
-            "depends_on": [
-                "content_analysis",
-                "terminology_analysis",
-                "background_research"
-            ]
-        }
+        agent=agents["analysis_presenter"],
+        tools=[
+            gista_tools.web_search,   # Enhanced search for final verification
+            gista_tools.dictionary,   # For final term verification
+            gista_tools.wikipedia     # For final fact checking
+        ],
+        context=[content_analysis, terminology_analysis, background_research],
+        output_pydantic=ContentValidationOutput
     )
-
+    
     return [
-        prepare_content,
-        approve_content,
-        reject_content,
         start_production_pipeline,
         content_analysis,
         terminology_analysis,
         background_research,
-        analysis_framework,
         content_presentation
     ]
 
+# 3. Script Production Tasks
 def create_script_production_tasks(agents):
-    """Create tasks for the Script Production Department"""
+    """Convert analyzed content into podcast scripts with proper transitions"""
     
+    opening_transition = Task(
+        description=(
+            "Create show opening transition:\n"
+            "1. Write Gista's self-introduction\n"
+            "2. Present content overview from research\n"
+            "3. Signal upcoming content readout\n"
+            "4. Set professional yet approachable tone"
+        ),
+        expected_output=(
+            "Opening script containing:\n"
+            "- Host introduction as Gista\n"
+            "- Content summary\n"
+            "- Readout preparation\n"
+            "- Transition markers"
+        ),
+        agent=agents["script_production"]["transition_writer"],
+        tools=[],
+        output_pydantic=ScriptOutput
+    )
+
     readout_script = Task(
         description=(
             "Create verbatim readout script:\n"
@@ -762,240 +368,249 @@ def create_script_production_tasks(agents):
         ),
         agent=agents["script_production"]["readout_script_writer"],
         tools=[],
+        context=[opening_transition],
+        output_pydantic=ScriptOutput
+    )
+
+    expert_introduction = Task(
+        description=(
+            "Create expert introduction and analysis setup:\n"
+            "1. Write post-readout host transition\n"
+            "2. Create expert welcome and introduction\n"
+            "3. Write expert's analysis overview\n"
+            "4. Set up Q&A format"
+        ),
+        expected_output=(
+            "Expert introduction script containing:\n"
+            "- Host's expert introduction\n"
+            "- Expert's response and overview\n"
+            "- Analysis preview\n"
+            "- Q&A format setup"
+        ),
+        agent=agents["script_production"]["transition_writer"],
+        tools=[],
+        context=[readout_script],
+        output_pydantic=ScriptOutput
     )
 
     qa_script = Task(
         description=(
-            "Develop Q&A segment scripts:\n"
-            "1. Convert analysis points into natural dialogue\n"
-            "2. Create host questions and expert responses\n"
-            "3. Include technical explanations\n"
-            "4. Structure discussion flow"
+            "Develop Q&A segment scripts with transitions:\n"
+            "1. Create sequential Q&A pairs (1-10)\n"
+            "2. Write transition between each Q&A\n"
+            "3. Ensure natural conversation flow\n"
+            "4. Maintain technical accuracy\n"
+            "Each Q&A should follow pattern:\n"
+            "- Transition to question\n"
+            "- Host question\n"
+            "- Expert response\n"
+            "- Bridge to next question"
         ),
         expected_output=(
-            "Q&A scripts including:\n"
+            "Q&A script package containing:\n"
+            "- 10 Q&A segments with transitions\n"
             "- Host questions\n"
             "- Expert responses\n"
-            "- Technical explanations\n"
-            "- Discussion flow markers"
+            "- Inter-segment transitions"
         ),
         agent=agents["script_production"]["qa_script_writer"],
         tools=[],
+        context=[expert_introduction],
+        output_pydantic=ScriptOutput
     )
 
-    transitions = Task(
+    closing_transition = Task(
         description=(
-            "Write segment transitions:\n"
-            "1. Create smooth transitions between segments\n"
-            "2. Ensure logical flow\n"
-            "3. Maintain engagement\n"
-            "4. Add audio cues"
+            "Create show closing:\n"
+            "1. Write host's expert acknowledgment\n"
+            "2. Summarize key discussion points\n"
+            "3. Create Gista's sign-off\n"
+            "4. Add final transition markers"
         ),
         expected_output=(
-            "A set of transitions including:\n"
-            "- Segment connectors\n"
-            "- Flow markers\n"
-            "- Audio cue points"
+            "Closing script containing:\n"
+            "- Expert acknowledgment\n"
+            "- Key points summary\n"
+            "- Host sign-off\n"
+            "- Final transition markers"
         ),
         agent=agents["script_production"]["transition_writer"],
         tools=[],
+        context=[qa_script],
+        output_pydantic=ScriptOutput
     )
 
-    return [readout_script, qa_script, transitions]
+    return [
+        opening_transition,
+        readout_script,
+        expert_introduction,
+        qa_script,
+        closing_transition
+    ]
 
-def create_audio_production_tasks(agents):
-    """Create tasks for the Audio Production Department"""
+# 4. Voice Generation Tasks
+def create_voice_generation_tasks(agents):
+    """Generate voice content from scripts"""
+    
+    gista_tools = GistaToolbox()
+    
+    parse_script = Task(
+        description=(
+            "Convert podcast script into parallel-processable segments:\n"
+            "1. Extract metadata (title, source, etc.)\n"
+            "2. Break down script into indexed segments:\n"
+                "a) readout_segments: Complete readout content\n"
+                "b) qa_segments_1_3: First Q&A section\n"
+                "c) qa_segments_4_6: Middle Q&A section\n"
+                "d) qa_segments_7_10: Final Q&A section\n"
+            "3. For each segment:\n"
+                "- Identify voice roles\n"
+                "- Mark pauses and emphasis\n"
+                "- Include technical term guides\n"
+            "4. Package segments for parallel processing"
+        ),
+        expected_output=(
+            "JSON formatted segment bundles:\n"
+            "- readout_bundle: {segments, metadata, voice_role}\n"
+            "- qa_early_bundle: {segments[1:3], metadata, voice_roles}\n"
+            "- qa_middle_bundle: {segments[4:6], metadata, voice_roles}\n"
+            "- qa_late_bundle: {segments[7:10], metadata, voice_roles}"
+        ),
+        agent=agents["parser"],
+        tools=[gista_tools.script_parser],
+        output_pydantic=ContentValidationOutput
+    )
     
     readout_production = Task(
         description=(
-            "Produce readout audio segments:\n"
-            "1. Record verbatim content\n"
-            "2. Ensure clear pronunciation\n"
-            "3. Add emphasis as marked\n"
-            "4. Include proper pauses"
+            "Generate readout audio from readout_bundle:\n"
+            "1. Process assigned readout segments\n"
+            "2. Apply segment-specific voice settings\n"
+            "3. Handle emphasis and pauses\n"
+            "4. Output segment-indexed audio files"
         ),
-        expected_output="High-quality audio files of readout segments",
-        agent=agents["audio_production"]["readout_producer"],
-        tools=[],
+        expected_output="Audio files for readout segments",
+        agent=agents["voice_generation"]["readout_producer"],
+        tools=[gista_tools.voiceover],
+        context=[
+            {
+                "depends_on": parse_script,
+                "segment_bundle": "readout_bundle"
+            }
+        ],
+        output_pydantic=ContentValidationOutput
     )
 
     qa_production_early = Task(
-        description="Produce Q&A segments 1-3 with proper pacing and tone",
+        description=(
+            "Generate Q&A segments 1-3 from qa_early_bundle:\n"
+            "1. Process assigned Q&A segments (1-3)\n"
+            "2. Apply role-specific voice settings\n"
+            "3. Handle technical terminology\n"
+            "4. Output indexed audio files"
+        ),
         expected_output="Audio files for Q&A segments 1-3",
-        agent=agents["audio_production"]["qa_producer_alpha"],
-        tools=[],
+        agent=agents["voice_generation"]["qa_producer_alpha"],
+        tools=[gista_tools.voiceover],
+        context=[
+            {
+                "depends_on": parse_script,
+                "segment_bundle": "qa_early_bundle"
+            }
+        ],
+        output_pydantic=ContentValidationOutput
     )
 
     qa_production_middle = Task(
-        description="Produce Q&A segments 4-6 with proper pacing and tone",
+        description=(
+            "Generate Q&A segments 4-6 from qa_middle_bundle:\n"
+            "1. Process assigned Q&A segments (4-6)\n"
+            "2. Apply role-specific voice settings\n"
+            "3. Handle technical terminology\n"
+            "4. Output indexed audio files"
+        ),
         expected_output="Audio files for Q&A segments 4-6",
-        agent=agents["audio_production"]["qa_producer_beta"],
-        tools=[],
+        agent=agents["voice_generation"]["qa_producer_beta"],
+        tools=[gista_tools.voiceover],
+        context=[
+            {
+                "depends_on": parse_script,
+                "segment_bundle": "qa_middle_bundle"
+            }
+        ],
+        output_pydantic=ContentValidationOutput
     )
 
     qa_production_late = Task(
-        description="Produce Q&A segments 7-10 with proper pacing and tone",
+        description=(
+            "Generate Q&A segments 7-10 from qa_late_bundle:\n"
+            "1. Process assigned Q&A segments (7-10)\n"
+            "2. Apply role-specific voice settings\n"
+            "3. Handle technical terminology\n"
+            "4. Output indexed audio files"
+        ),
         expected_output="Audio files for Q&A segments 7-10",
-        agent=agents["audio_production"]["qa_producer_gamma"],
-        tools=[],
+        agent=agents["voice_generation"]["qa_producer_gamma"],
+        tools=[gista_tools.voiceover],
+        context=[
+            {
+                "depends_on": parse_script,
+                "segment_bundle": "qa_late_bundle"
+            }
+        ],
+        output_pydantic=ContentValidationOutput
     )
-
-    audio_mixing = Task(
-        description=(
-            "Mix and master all audio segments:\n"
-            "1. Combine all segments\n"
-            "2. Balance audio levels\n"
-            "3. Apply consistent EQ\n"
-            "4. Ensure smooth transitions"
-        ),
-        expected_output="Final mixed and mastered audio file",
-        agent=agents["audio_production"]["audio_mixer"],
-        tools=[],
-    )
-
-    sound_design = Task(
-        description=(
-            "Add sound design elements:\n"
-            "1. Insert transition effects\n"
-            "2. Add background music\n"
-            "3. Include sound effects\n"
-            "4. Balance all audio elements"
-        ),
-        expected_output="Enhanced audio with sound design elements",
-        agent=agents["audio_production"]["sound_designer"],
-        tools=[],
-    )
-
-    return [readout_production, qa_production_early, qa_production_middle, 
-            qa_production_late, audio_mixing, sound_design]
-
-def create_quality_assurance_tasks(agents):
-    """Create tasks for the Quality Assurance Department"""
     
-    content_quality = Task(
+    generate_transcript = Task(
         description=(
-            "Verify content quality:\n"
-            "1. Check content accuracy\n"
-            "2. Verify educational value\n"
-            "3. Ensure clarity of explanation\n"
-            "4. Review technical accuracy"
+            "Create transcript from all completed segments:\n"
+            "1. Collect all segment audio files\n"
+            "2. Process in segment index order\n"
+            "3. Maintain speaker attribution\n"
+            "4. Combine into final transcript"
         ),
-        expected_output="Content quality verification report",
-        agent=agents["quality_assurance"]["content_qa"],
-        tools=[],
+        expected_output="Complete transcript document",
+        agent=agents["transcriber"],
+        tools=[gista_tools.transcription],
+        context=[
+            {
+                "depends_on": [parse_script, readout_production, 
+                             qa_production_early, qa_production_middle, 
+                             qa_production_late],
+                "segment_order": "index"
+            }
+        ],
+        output_pydantic=ContentValidationOutput
     )
-
-    fact_checking = Task(
-        description=(
-            "Perform fact checking:\n"
-            "1. Verify all claims\n"
-            "2. Check statistics\n"
-            "3. Validate references\n"
-            "4. Document sources"
-        ),
-        expected_output="Fact checking verification report",
-        agent=agents["quality_assurance"]["fact_checker"],
-        tools=[],
-    )
-
-    audio_quality = Task(
-        description=(
-            "Verify audio quality:\n"
-            "1. Check sound quality\n"
-            "2. Verify audio consistency\n"
-            "3. Review transitions\n"
-            "4. Validate sound levels"
-        ),
-        expected_output="Audio quality verification report",
-        agent=agents["quality_assurance"]["audio_qa"],
-        tools=[],
-    )
-
-    return [content_quality, fact_checking, audio_quality]
-
-def create_project_management_tasks(agents):
-    """Create tasks for the Project Management Department"""
     
-    workflow_coordination = Task(
-        description=(
-            "Coordinate overall workflow:\n"
-            "1. Monitor task progression\n"
-            "2. Manage handoffs\n"
-            "3. Address bottlenecks\n"
-            "4. Ensure timeline adherence"
-        ),
-        expected_output="Workflow status and coordination report",
-        agent=agents["project_management"]["workflow_coordinator"],
-        tools=[],
-    )
-
-    resource_optimization = Task(
-        description=(
-            "Optimize resource allocation:\n"
-            "1. Monitor resource usage\n"
-            "2. Adjust allocations\n"
-            "3. Manage parallel processing\n"
-            "4. Resolve resource conflicts"
-        ),
-        expected_output="Resource optimization report",
-        agent=agents["project_management"]["resource_manager"],
-        tools=[],
-    )
-
-    quality_management = Task(
-        description=(
-            "Manage overall quality:\n"
-            "1. Review all QA reports\n"
-            "2. Ensure standard compliance\n"
-            "3. Approve final delivery\n"
-            "4. Document quality metrics"
-        ),
-        expected_output="Final quality approval report",
-        agent=agents["project_management"]["quality_manager"],
-        tools=[],
-    )
-
-    return [workflow_coordination, resource_optimization, quality_management]
-
-def create_research_workflow(tasks):
-    """
-    The research workflow should be:
-    1. Initial terminology identification
-    2. Dictionary lookup for basic understanding
-    3. Technical documentation research for depth
-    4. Academic verification for accuracy
-    5. Current context for relevance
-    6. Background research synthesis
-    7. Final analysis framework creation
-    """
     return [
-        tasks["terminology_analysis"],
-        tasks["dictionary_lookup"],
-        tasks["technical_documentation"],
-        tasks["academic_verification"],
-        tasks["current_context"],
-        tasks["background_research"],
-        tasks["analysis_framework"]
+        parse_script,
+        readout_production,
+        qa_production_early,
+        qa_production_middle,
+        qa_production_late,
+        generate_transcript
     ]
 
 def create_all_gista_tasks(agents):
     """
-    Create and return all tasks for the Gista workflow
-    
-    Args:
-        agents: Dictionary containing all Gista agents by department
-        
-    Returns:
-        list: Complete list of ordered tasks for the workflow
+    Create and return all tasks in workflow order:
+    1. Content Assessment → 2. Analysis → 3. Script → 4. Voice
     """
+    validation_tasks = create_user_content_validation_tasks(agents)
+    research_tasks = create_user_content_research_tasks(agents, validation_tasks)
+    script_tasks = create_script_production_tasks(agents["script_production"])
+    voice_tasks = create_voice_generation_tasks(agents["voice_generation"])
     
-    tasks = (
-        create_content_assessment_tasks(agents["content_assessment"]) +
-        create_script_production_tasks(agents["script_production"]) +
-        create_voice_generation_tasks(agents["voice_generation"]) +
-        create_audio_production_tasks(agents["audio_production"]) +
-        create_quality_assurance_tasks(agents["quality_assurance"]) +
-        create_project_management_tasks(agents["project_management"])
+    # Combine in workflow order
+    all_tasks = (
+        validation_tasks +
+        research_tasks +
+        script_tasks +
+        voice_tasks
     )
     
-    return tasks
+    return all_tasks
+
+def task_completed_callback(output):
+    print(f"Task completed with status: {output.status}")
