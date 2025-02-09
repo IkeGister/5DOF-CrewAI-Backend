@@ -85,6 +85,7 @@ class AudioOutput(BaseModel):
 # 1. Content Assessment Tasks
 def create_user_content_validation_tasks(agents):
     """Initial content validation and user response tasks"""
+    print(f"\nCreating validation tasks with agents keys: {list(agents.keys())}")
     
     gista_tools = GistaToolbox()
     
@@ -111,9 +112,9 @@ def create_user_content_validation_tasks(agents):
             "- Extracted content sections\n"
             "- Processing information"
         ),
-        agent=agents["doc_assessor"],
+        agent=agents["content_validator"],
         tools=[
-            gista_tools.web_scraper,   # Content extraction tools
+            gista_tools.web_scraper,
             gista_tools.pdf_reader,
             gista_tools.docx_reader,
             gista_tools.csv_reader,
@@ -139,8 +140,8 @@ def create_user_content_validation_tasks(agents):
             "- Approval details\n"
             "- UI messages"
         ),
-        agent=agents["doc_assessor"],
-        tools=[],  # TODO: Implement notification and messaging tools
+        agent=agents["content_validator"],
+        tools=[],
         context=[prepare_content],
         output_pydantic=ContentValidationOutput,
         callback=task_completed_callback
@@ -164,8 +165,8 @@ def create_user_content_validation_tasks(agents):
             "- Rejection details\n"
             "- UI messages"
         ),
-        agent=agents["doc_assessor"],
-        tools=[],  # TODO: Implement notification and messaging tools
+        agent=agents["content_validator"],
+        tools=[],
         context=[prepare_content],
         output_pydantic=ContentValidationOutput,
         callback=task_completed_callback
@@ -175,6 +176,7 @@ def create_user_content_validation_tasks(agents):
 
 def create_user_content_research_tasks(agents, validation_tasks):
     """Research preparation and initial analysis tasks"""
+    print(f"\nCreating research tasks with agents keys: {list(agents.keys())}")
     
     gista_tools = GistaToolbox()
     prepare_content = validation_tasks[0]
@@ -204,11 +206,11 @@ def create_user_content_research_tasks(agents, validation_tasks):
             "- Research targets\n"
             "- Special handling requirements"
         ),
-        agent=agents["doc_assessor"],
+        agent=agents["content_validator"],
         tools=[
-            gista_tools.web_search,   # Enhanced search for initial research
-            gista_tools.wikipedia,    # For general knowledge
-            gista_tools.dictionary    # For term understanding
+            gista_tools.web_search,
+            gista_tools.wikipedia,
+            gista_tools.dictionary
         ],
         context=[prepare_content, approve_content],
         output_pydantic=ContentValidationOutput,
@@ -230,11 +232,11 @@ def create_user_content_research_tasks(agents, validation_tasks):
             "- Technical term identification\n"
             "- Complexity metrics"
         ),
-        agent=agents["keyword_analyst"],
+        agent=agents["content_analyst"],
         tools=[
-            gista_tools.web_search,   # Enhanced search for content research
-            gista_tools.wikipedia,    # For concept understanding
-            gista_tools.dictionary    # For term definitions
+            gista_tools.web_search,
+            gista_tools.wikipedia,
+            gista_tools.dictionary
         ],
         context=[start_production_pipeline],
         output_pydantic=ContentAnalysisOutput
@@ -255,11 +257,11 @@ def create_user_content_research_tasks(agents, validation_tasks):
             "- Explanation frameworks\n"
             "- Complexity levels"
         ),
-        agent=agents["keyword_analyst"],
+        agent=agents["technical_analyst"],
         tools=[
-            gista_tools.web_search,   # Enhanced search for term research
-            gista_tools.dictionary,   # For term definitions
-            gista_tools.wikipedia    # For term context
+            gista_tools.web_search,
+            gista_tools.dictionary,
+            gista_tools.wikipedia
         ],
         context=[content_analysis],
         output_pydantic=TerminologyAnalysisOutput
@@ -282,9 +284,9 @@ def create_user_content_research_tasks(agents, validation_tasks):
         ),
         agent=agents["research_specialist"],
         tools=[
-            gista_tools.web_search,   # Enhanced search for deep research
-            gista_tools.wikipedia,    # For background information
-            gista_tools.dictionary    # For term verification
+            gista_tools.web_search,
+            gista_tools.wikipedia,
+            gista_tools.dictionary
         ],
         context=[content_analysis],
         output_pydantic=ContentValidationOutput
@@ -309,11 +311,11 @@ def create_user_content_research_tasks(agents, validation_tasks):
             "- Production notes\n"
             "- Emphasis markers"
         ),
-        agent=agents["analysis_presenter"],
+        agent=agents["content_analyst"],
         tools=[
-            gista_tools.web_search,   # Enhanced search for final verification
-            gista_tools.dictionary,   # For final term verification
-            gista_tools.wikipedia     # For final fact checking
+            gista_tools.web_search,
+            gista_tools.dictionary,
+            gista_tools.wikipedia
         ],
         context=[content_analysis, terminology_analysis, background_research],
         output_pydantic=ContentValidationOutput
@@ -328,8 +330,13 @@ def create_user_content_research_tasks(agents, validation_tasks):
     ]
 
 # 3. Script Production Tasks
-def create_script_production_tasks(agents):
-    """Convert analyzed content into podcast scripts with proper transitions"""
+def create_script_production_tasks(script_agents):
+    """
+    Convert analyzed content into podcast scripts with proper transitions.
+    This function expects the sub-dictionary for script production,
+    i.e., gista_agents["script_production"].
+    """
+    print(f"\nCreating script tasks with script_agents keys: {list(script_agents.keys())}")
     
     opening_transition = Task(
         description=(
@@ -346,7 +353,7 @@ def create_script_production_tasks(agents):
             "- Readout preparation\n"
             "- Transition markers"
         ),
-        agent=agents["script_production"]["transition_writer"],
+        agent=script_agents["transition_writer"],
         tools=[],
         output_pydantic=ScriptOutput
     )
@@ -366,7 +373,7 @@ def create_script_production_tasks(agents):
             "- Emphasis markers\n"
             "- Pronunciation guides"
         ),
-        agent=agents["script_production"]["readout_script_writer"],
+        agent=script_agents["readout_script_writer"],
         tools=[],
         context=[opening_transition],
         output_pydantic=ScriptOutput
@@ -387,7 +394,7 @@ def create_script_production_tasks(agents):
             "- Analysis preview\n"
             "- Q&A format setup"
         ),
-        agent=agents["script_production"]["transition_writer"],
+        agent=script_agents["transition_writer"],
         tools=[],
         context=[readout_script],
         output_pydantic=ScriptOutput
@@ -413,7 +420,7 @@ def create_script_production_tasks(agents):
             "- Expert responses\n"
             "- Inter-segment transitions"
         ),
-        agent=agents["script_production"]["qa_script_writer"],
+        agent=script_agents["qa_script_writer"],
         tools=[],
         context=[expert_introduction],
         output_pydantic=ScriptOutput
@@ -434,7 +441,7 @@ def create_script_production_tasks(agents):
             "- Host sign-off\n"
             "- Final transition markers"
         ),
-        agent=agents["script_production"]["transition_writer"],
+        agent=script_agents["transition_writer"],
         tools=[],
         context=[qa_script],
         output_pydantic=ScriptOutput
@@ -449,8 +456,16 @@ def create_script_production_tasks(agents):
     ]
 
 # 4. Voice Generation Tasks
-def create_voice_generation_tasks(agents):
-    """Generate voice content from scripts"""
+def create_voice_generation_tasks(voice_agents, script_agents):
+    """
+    Generate voice content from scripts.
+    This function expects:
+    - voice_agents: gista_agents["voice_generation"]
+    - script_agents: gista_agents["script_production"]
+    """
+    print(f"\nCreating voice tasks with:")
+    print(f"- voice_agents keys: {list(voice_agents.keys())}")
+    print(f"- script_agents keys: {list(script_agents.keys())}")
     
     gista_tools = GistaToolbox()
     
@@ -476,7 +491,7 @@ def create_voice_generation_tasks(agents):
             "- qa_middle_bundle: {segments[4:6], metadata, voice_roles}\n"
             "- qa_late_bundle: {segments[7:10], metadata, voice_roles}"
         ),
-        agent=agents["parser"],
+        agent=voice_agents["segment_voice_alpha"],
         tools=[gista_tools.script_parser],
         output_pydantic=ContentValidationOutput
     )
@@ -490,14 +505,14 @@ def create_voice_generation_tasks(agents):
             "4. Output segment-indexed audio files"
         ),
         expected_output="Audio files for readout segments",
-        agent=agents["voice_generation"]["readout_producer"],
+        agent=voice_agents["segment_voice_alpha"],
         tools=[gista_tools.voiceover],
-        context=[
-            {
-                "depends_on": parse_script,
-                "segment_bundle": "readout_bundle"
-            }
-        ],
+        context=[{
+            "description": "Parse script output for readout segment",
+            "expected_output": "Readout segment bundle",
+            "depends_on": parse_script,
+            "segment_bundle": "readout_bundle"
+        }],
         output_pydantic=ContentValidationOutput
     )
 
@@ -510,14 +525,14 @@ def create_voice_generation_tasks(agents):
             "4. Output indexed audio files"
         ),
         expected_output="Audio files for Q&A segments 1-3",
-        agent=agents["voice_generation"]["qa_producer_alpha"],
+        agent=voice_agents["segment_voice_alpha"],
         tools=[gista_tools.voiceover],
-        context=[
-            {
-                "depends_on": parse_script,
-                "segment_bundle": "qa_early_bundle"
-            }
-        ],
+        context=[{
+            "description": "Parse script output for early Q&A segments",
+            "expected_output": "Early Q&A segment bundle",
+            "depends_on": parse_script,
+            "segment_bundle": "qa_early_bundle"
+        }],
         output_pydantic=ContentValidationOutput
     )
 
@@ -530,14 +545,14 @@ def create_voice_generation_tasks(agents):
             "4. Output indexed audio files"
         ),
         expected_output="Audio files for Q&A segments 4-6",
-        agent=agents["voice_generation"]["qa_producer_beta"],
+        agent=voice_agents["segment_voice_beta"],
         tools=[gista_tools.voiceover],
-        context=[
-            {
-                "depends_on": parse_script,
-                "segment_bundle": "qa_middle_bundle"
-            }
-        ],
+        context=[{
+            "description": "Parse script output for middle Q&A segments",
+            "expected_output": "Middle Q&A segment bundle",
+            "depends_on": parse_script,
+            "segment_bundle": "qa_middle_bundle"
+        }],
         output_pydantic=ContentValidationOutput
     )
 
@@ -550,14 +565,14 @@ def create_voice_generation_tasks(agents):
             "4. Output indexed audio files"
         ),
         expected_output="Audio files for Q&A segments 7-10",
-        agent=agents["voice_generation"]["qa_producer_gamma"],
+        agent=voice_agents["segment_voice_gamma"],
         tools=[gista_tools.voiceover],
-        context=[
-            {
-                "depends_on": parse_script,
-                "segment_bundle": "qa_late_bundle"
-            }
-        ],
+        context=[{
+            "description": "Parse script output for late Q&A segments",
+            "expected_output": "Late Q&A segment bundle",
+            "depends_on": parse_script,
+            "segment_bundle": "qa_late_bundle"
+        }],
         output_pydantic=ContentValidationOutput
     )
     
@@ -570,16 +585,16 @@ def create_voice_generation_tasks(agents):
             "4. Combine into final transcript"
         ),
         expected_output="Complete transcript document",
-        agent=agents["transcriber"],
+        agent=script_agents["transcript_generator"],
         tools=[gista_tools.transcription],
-        context=[
-            {
-                "depends_on": [parse_script, readout_production, 
-                             qa_production_early, qa_production_middle, 
-                             qa_production_late],
-                "segment_order": "index"
-            }
-        ],
+        context=[{
+            "description": "Process all audio segments in order",
+            "expected_output": "Combined transcript from all segments",
+            "depends_on": [parse_script, readout_production, 
+                          qa_production_early, qa_production_middle, 
+                          qa_production_late],
+            "segment_order": "index"
+        }],
         output_pydantic=ContentValidationOutput
     )
     
@@ -596,11 +611,23 @@ def create_all_gista_tasks(agents):
     """
     Create and return all tasks in workflow order:
     1. Content Assessment → 2. Analysis → 3. Script → 4. Voice
+    
+    Args:
+        agents: The complete agents dictionary from create_gista_agents()
     """
-    validation_tasks = create_user_content_validation_tasks(agents)
-    research_tasks = create_user_content_research_tasks(agents, validation_tasks)
+    print(f"\nCreating all tasks with main agents keys: {list(agents.keys())}")
+    
+    validation_tasks = create_user_content_validation_tasks(agents["content_assessment"])
+    print(f"✓ Validation tasks created: {len(validation_tasks)} tasks")
+    
+    research_tasks = create_user_content_research_tasks(agents["content_assessment"], validation_tasks)
+    print(f"✓ Research tasks created: {len(research_tasks)} tasks")
+    
     script_tasks = create_script_production_tasks(agents["script_production"])
-    voice_tasks = create_voice_generation_tasks(agents["voice_generation"])
+    print(f"✓ Script tasks created: {len(script_tasks)} tasks")
+    
+    voice_tasks = create_voice_generation_tasks(agents["voice_generation"], agents["script_production"])
+    print(f"✓ Voice tasks created: {len(voice_tasks)} tasks")
     
     # Combine in workflow order
     all_tasks = (
@@ -609,6 +636,7 @@ def create_all_gista_tasks(agents):
         script_tasks +
         voice_tasks
     )
+    print(f"✓ Total tasks created: {len(all_tasks)} tasks\n")
     
     return all_tasks
 

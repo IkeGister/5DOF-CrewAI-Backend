@@ -3,11 +3,14 @@ import os
 import unittest
 import datetime
 from pathlib import Path
+import warnings
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from tasks.gistaApp_tasks.gista_tasks import (
     create_all_gista_tasks,
     create_script_production_tasks,
+    create_user_content_validation_tasks,
+    create_user_content_research_tasks,
 )
 from agents.gistaApp_agents.gista_agents import create_gista_agents
 from config.settings import validate_settings
@@ -17,6 +20,8 @@ try:
     IN_NOTEBOOK = True
 except ImportError:
     IN_NOTEBOOK = False
+
+warnings.filterwarnings("ignore", message="Mixing V1 models and V2 models")
 
 def display_result(result):
     """Display result in markdown if in notebook, otherwise print"""
@@ -34,10 +39,15 @@ def create_test_pipeline(content_source):
     
     # Create all agents
     gista_agents = create_gista_agents()
+    print(f"\nTest pipeline using agents with departments: {list(gista_agents.keys())}")
     
     # Create tasks for content assessment and script production only
-    content_tasks = create_all_gista_tasks(gista_agents)[:9]  # First 9 tasks are content assessment
+    validation_tasks = create_user_content_validation_tasks(gista_agents["content_assessment"])
+    research_tasks = create_user_content_research_tasks(gista_agents["content_assessment"], validation_tasks)
     script_tasks = create_script_production_tasks(gista_agents["script_production"])
+    
+    # Combine only the tasks we need for testing
+    content_tasks = validation_tasks + research_tasks
     
     # Execute pipeline
     try:
@@ -53,12 +63,13 @@ def create_test_pipeline(content_source):
             ],
             tasks=content_tasks,
             verbose=True,
-            memory=True
+            memory=False
         )
         
         # 2. Script Production Crew
         script_crew = Crew(
             agents=[
+                gista_agents["script_production"]["transition_writer"],
                 gista_agents["script_production"]["readout_script_writer"],
                 gista_agents["script_production"]["segment_script_alpha"],
                 gista_agents["script_production"]["segment_script_beta"],
@@ -68,7 +79,7 @@ def create_test_pipeline(content_source):
             ],
             tasks=script_tasks,
             verbose=True,
-            memory=True
+            memory=False
         )
         
         # Execute pipeline

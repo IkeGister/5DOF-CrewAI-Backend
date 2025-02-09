@@ -2,140 +2,103 @@
 Gista App Agent System
 =====================
 
-A specialized system for converting text content into podcast episodes, organized into three main departments.
+A specialized system for converting text content into podcast episodes.
 
-Department Structure and Agent Responsibilities
---------------------------------------------
-
-1. Content Assessment Department
+Department Structure & Task Flow
 ------------------------------
-Primary Tools: Web Scraper, PDF Reader, DOCX Reader, CSV Reader, Directory Reader, 
-              Enhanced Web Search, Wikipedia Research, Dictionary Tool
+```
+Content Assessment → Script Production → Voice Generation
+     [Validate]          [Write]            [Speak]
+```
 
-Agents:
-- Content Validator
-  * Handles initial content preparation and validation
-  * Makes approval/rejection decisions
-  * Initiates production pipeline
-  * Uses content extraction tools for various file types
-
-- Content Analyst
-  * Analyzes content structure and relationships
-  * Creates content maps and presentation frameworks
-  * Prepares content for script production
-  * Uses research tools for content analysis
-
-- Technical Analyst
-  * Specializes in technical terminology analysis
-  * Researches and explains complex concepts
-  * Creates technical glossaries
-  * Uses dictionary and research tools
-
-- Research Specialist
-  * Conducts deep background research
-  * Verifies claims and sources
-  * Provides contextual information
-  * Uses enhanced web search and research tools
+Agent-Task Mapping
+-----------------
+```
+1. Content Assessment Department
+┌─────────────────────┬──────────────────────────────┐
+│ Agent              │ Tasks                        │
+├─────────────────────┼──────────────────────────────┤
+│ Content Validator  │ • prepare_content            │
+│                   │ • approve_content            │
+│                   │ • reject_content             │
+│                   │ • start_production_pipeline  │
+├─────────────────────┼──────────────────────────────┤
+│ Content Analyst    │ • content_analysis          │
+│                   │ • content_presentation       │
+├─────────────────────┼──────────────────────────────┤
+│ Technical Analyst  │ • terminology_analysis      │
+├─────────────────────┼──────────────────────────────┤
+│ Research Specialist│ • background_research       │
+└─────────────────────┴──────────────────────────────┘
 
 2. Script Production Department
------------------------------
-Primary Tools: None currently assigned, uses analysis output
-
-Agents:
-- Readout Script Writer
-  * Creates main content readout scripts
-  * Structures core narrative
-  * Sets emphasis points
-  * Handles technical term presentation
-
-- Segment Script Writers (Alpha, Beta, Gamma, Omega)
-  * Alpha: Segments 1-3 (Opening, Introduction)
-  * Beta: Segments 4-6 (Core Content)
-  * Gamma: Segments 7-9 (Detailed Discussion)
-  * Omega: Segment 10 (Conclusion)
-  * Each maintains consistent narrative flow
-  * Handles transitions between segments
-
-- Transcript Generator
-  * Creates accurate transcripts
-  * Handles speaker attribution
-  * Maintains proper formatting
-  * Works with voice generation output
+┌─────────────────────┬──────────────────────────────┐
+│ Agent              │ Tasks                        │
+├─────────────────────┼──────────────────────────────┤
+│ Transition Writer  │ • opening_transition         │
+│                   │ • expert_introduction        │
+│                   │ • closing_transition         │
+├─────────────────────┼──────────────────────────────┤
+│ Readout Writer     │ • readout_script            │
+├─────────────────────┼──────────────────────────────┤
+│ Script Alpha       │ • segments 1-3              │
+│ Script Beta        │ • segments 4-6              │
+│ Script Gamma       │ • segments 7-9              │
+│ Script Omega       │ • segment 10                │
+├─────────────────────┼──────────────────────────────┤
+│ Transcript Gen     │ • generate_transcript       │
+└─────────────────────┴──────────────────────────────┘
 
 3. Voice Generation Department
-----------------------------
-Primary Tools: Script Parser Tool, ElevenLabs Voiceover Tool, Transcription Tool
-
-Agents:
-- Voice Generators (Alpha, Beta, Gamma, Omega)
-  * Alpha: Segments 1-3
-  * Beta: Segments 4-6
-  * Gamma: Segments 7-9
-  * Omega: Segment 10
-  * Each maintains consistent voice quality
-  * Handles emphasis and pacing
-  * Uses ElevenLabs for voice synthesis
-
-Process Flow and Dependencies
----------------------------
-1. Content Assessment Flow:
-   Content Validator → Content/Technical Analysis → Research → Presentation
-
-2. Script Production Flow:
-   Readout Script → Segment Scripts (parallel) → Transcript
-
-3. Voice Generation Flow:
-   Script Parsing → Voice Generation (parallel) → Transcript Generation
-
-Task-Agent Mapping Matrix
-------------------------
-[C: Content Tasks    S: Script Tasks    V: Voice Tasks]
-
-Agents                Tasks
-----------------------------------------
-Content Validator     C1 C2 C3 C4
-Content Analyst      C5 C6
-Technical Analyst    C7 C8
-Research Spec.       C9 C10
-
-Readout Writer       S1
-Script Alpha         S2(1-3)
-Script Beta          S2(4-6)
-Script Gamma         S2(7-9)
-Script Omega         S2(10)
-Transcript Gen.      S3
-
-Voice Alpha          V1(1-3)
-Voice Beta          V1(4-6)
-Voice Gamma         V1(7-9)
-Voice Omega         V1(10)
-
-Parallel Processing Groups
--------------------------
-[Segments 1-3]  Script Alpha → Voice Alpha
-[Segments 4-6]  Script Beta  → Voice Beta
-[Segments 7-9]  Script Gamma → Voice Gamma
-[Segment 10]    Script Omega → Voice Omega
+┌─────────────────────┬──────────────────────────────┐
+│ Agent              │ Tasks                        │
+├─────────────────────┼──────────────────────────────┤
+│ Voice Alpha        │ • parse_script               │
+│                   │ • segments 1-3               │
+├─────────────────────┼──────────────────────────────┤
+│ Voice Beta         │ • segments 4-6              │
+├─────────────────────┼──────────────────────────────┤
+│ Voice Gamma        │ • segments 7-9              │
+├─────────────────────┼──────────────────────────────┤
+│ Voice Omega        │ • segment 10                │
+└─────────────────────┴──────────────────────────────┘
+```
 
 Tool Integration
 ---------------
-1. Content Assessment Tools:
-   - Web Scraper Tool: Content extraction from web pages
-   - PDF/DOCX/CSV Readers: Document content extraction
-   - Enhanced Web Search: Research and verification
-   - Wikipedia Research: Background information
-   - Dictionary Tool: Term definitions and analysis
+```
+Content Assessment ──► Research Tools
+                     • Web Scraper
+                     • PDF/DOCX/CSV Readers
+                     • Enhanced Search
+                     • Wikipedia Research
+                     • Dictionary
 
-2. Voice Generation Tools:
-   - Script Parser Tool: Converts scripts to voice segments
-   - ElevenLabs Voiceover: Voice synthesis
-   - Transcription Tool: Creates final transcripts
+Script Production ──► Analysis Output
+                     • Content Maps
+                     • Technical Terms
+                     • Research Data
+
+Voice Generation ──► Voice Tools
+                    • Script Parser
+                    • ElevenLabs Voice
+                    • Transcription
+```
+
+Process Flow
+-----------
+```
+[Content] ──► [Validation] ──► [Research] ──► [Analysis]
+                                                │
+                                                ▼
+[Voice] ◄── [Generation] ◄── [Scripts] ◄── [Presentation]
+```
 
 Notes:
-- Each department has specific tool assignments
-- Content assessment heavily utilizes research tools
-- Voice generation has complete tool coverage
-- Script production focuses on content structuring
+- Each department operates sequentially but allows parallel processing within
+- Content assessment provides foundation for script production
+- Voice generation depends on completed scripts
+- Tools are department-specific
 """
 
 from crewai import Agent
@@ -305,6 +268,19 @@ def create_gista_agents():
         verbose=True
     )
 
+    # Script Production Department
+    transition_writer = Agent(
+        role="Transition Writer",
+        goal="Create smooth transitions between podcast segments",
+        backstory=(
+            "Expert in crafting natural transitions and segment connections. "
+            "Specializes in opening, closing, and inter-segment transitions "
+            "that maintain narrative flow and listener engagement."
+        ),
+        allow_delegation=False,
+        verbose=True
+    )
+
     agents_dict = {
         "content_assessment": {
             "doc_assessor": content_validator,
@@ -322,8 +298,8 @@ def create_gista_agents():
             "segment_script_gamma": segment_script_gamma,
             "segment_script_omega": segment_script_omega,
             "transcript_generator": transcript_generator,
-            "qa_script_writer": segment_script_beta,
-            "transition_writer": segment_script_gamma
+            "transition_writer": transition_writer,
+            "qa_script_writer": segment_script_beta
         },
         "voice_generation": {
             "segment_voice_alpha": segment_voice_alpha,
