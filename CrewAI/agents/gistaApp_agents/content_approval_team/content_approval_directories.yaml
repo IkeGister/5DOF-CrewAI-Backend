@@ -1,0 +1,179 @@
+# Content Approval Guidelines
+content_approval_guidelines:
+  criteria:
+    accepted:
+      - news article
+      - text-based PDF
+      - blog post
+      - website with primarily text content
+      - academic papers
+      - entertainment reviews
+      - art critiques
+      - cultural analysis
+      - technical documentation
+      - industry insights
+      - general interest articles
+    
+    rejected:
+      # Content-based rejections
+      - malicious content or websites
+      - hate speech or discriminatory content
+      - explicit adult content
+      - content promoting harm or violence
+      - policy-violating material
+      - content with security risks
+      - purely promotional material
+      - content without educational value
+      
+      # URL and access-based rejections
+      - dead or invalid URLs
+      - phishing or scam domains
+      - malware-infected sites
+      - sites with excessive ads or popups
+      - paywalled content
+      - login-required content
+      - sites with bot detection/blocking
+      - temporary or expiring content
+      - redirecting URLs
+      - URL shorteners without preview
+      - sites with broken SSL certificates
+      - domains known for content scraping
+    
+    length_requirements:
+      minimum_words: 300
+      maximum_words: 15000
+      optimal_range: "1000-5000 words"
+      
+      special_cases:
+        short_form:
+          minimum: 300
+          maximum: 1000
+          notes: "Must be highly focused technical content"
+        
+        long_form:
+          minimum: 5000
+          maximum: 15000
+          notes: "Will be split into multiple podcast segments"
+        
+        handling_rules:
+          - Content exceeding 5000 words will be evaluated for multi-part potential
+          - Series articles can be processed as related segments
+          - Technical documentation can be split by sections
+          - Academic papers can be divided by logical breaks
+  
+  metadata_requirements:
+    required:
+      - title  # Basic content identifier
+      - URL (if web content)  # Source location
+    
+    recommended:
+      - author name (if available)
+      - publication date (if available)
+      - source/publisher
+    
+    optional_technical:
+      - content accessibility status  # For tracking access issues
+      - paywall/login status  # If encountered
+      - SSL certificate status  # Only for security concerns
+      - redirect chain  # Only if suspicious
+      - domain reputation  # Only for unknown sources
+    
+    validation_rules:
+      - Missing recommended fields should not auto-reject content
+      - Technical metadata only needed if issues detected
+      - Author can be "Unknown" or "Anonymous"
+      - Publication date can be approximate
+      - Source can be derived from URL domain
+  
+  content_quality_markers:
+    basic_requirements:
+      - Readable text format
+      - Clear content structure
+      - Complete article/document
+      - Accessible content
+      - Sufficient length
+    
+    initial_checks:
+      - No broken formatting
+      - No missing sections
+      - No corrupted content
+      - No machine-generated spam
+      - No duplicate submissions
+    
+    surface_markers:
+      - Basic coherence
+      - Identifiable topic
+      - Appropriate language level
+      - Standard writing format
+      - Consistent presentation
+
+  # Additional podcast-specific requirements
+  podcast_content_requirements:
+    content_type:
+      - informational
+      - educational
+      - technical
+      - professional development
+      - entertainment analysis
+      - cultural commentary
+      - artistic discussion
+      - industry trends
+      - general interest topics
+    
+    restricted_content:
+      # Content restrictions
+      - hate speech
+      - explicit language
+      - discriminatory content
+      - malicious material
+      - security threats
+      - privacy violations
+      - unverified claims
+      - misleading information
+      
+      # Technical restrictions
+      - unstable or intermittent content
+      - region-locked content
+      - content requiring VPN
+      - sites with aggressive DRM
+      - sites blocking text selection
+      - sites with unstable rendering
+      - sites with heavy client-side scripts
+      - content requiring specific browsers
+    
+    accessibility_requirements:
+      - clear terminology
+      - structured presentation
+      - logical flow
+      - appropriate complexity level
+      - inclusive language
+      - balanced perspective
+      - contextual background
+      - stable content access
+      - consistent availability
+      - platform independence
+    
+    validation_checks:
+      basic_checks:
+        - URL accessibility
+        - Content readability
+        - Basic rendering check
+        - No immediate access blocks
+      
+      content_checks:
+        - Sufficient content length
+        - Text extractability
+        - Basic format compatibility
+        - No obvious spam markers
+      
+      safety_checks:
+        - No malicious redirects
+        - No obvious security threats
+        - Safe domain status
+      
+      handling_rules:
+        - Deeper validation happens in content analysis stage
+        - Legal compliance checked by analysis team
+        - Technical accuracy verified by expert agents
+        - Source credibility evaluated in research phase
+        - Skip complex checks if basic access succeeds
