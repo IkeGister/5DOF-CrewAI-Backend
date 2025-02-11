@@ -24,3 +24,7 @@ __pycache__/
 # OS
 .DS_Store
 Thumbs.db
+
+# Test Files
+test_objects/
+**/test_objects/
