@@ -15,7 +15,7 @@ import yaml
 from pathlib import Path
 import re
 
-from CrewAI.agents.gistaApp_agents.content_approval_team.content_approval_tools import (
+from .content_approval_tools import (
     create_gista_websearch_tool,
     create_gista_scrape_tool,
     create_document_verification_tools,
@@ -26,7 +26,14 @@ def load_approval_guidelines():
     """Load content approval guidelines from YAML"""
     yaml_path = Path(__file__).parent / "content_approval_directories.yaml"
     print(f"\nLoading guidelines from: {yaml_path}")
+    print(f"Absolute path: {yaml_path.absolute()}")
     print(f"File exists: {yaml_path.exists()}\n")
+    
+    if not yaml_path.exists():
+        raise FileNotFoundError(
+            f"YAML file not found at {yaml_path}. "
+            f"Current directory: {Path.cwd()}"
+        )
     
     try:
         with open(yaml_path, 'r') as file:
@@ -217,14 +224,20 @@ def create_content_approval_tasks(agents):
             "- Suggested alternatives if applicable"
         ),
         agent=agents["content_validator"],
-        tools=lambda task_output: get_tools_for_content_type(
-            content_type=task_output.content_type,
-            content_path=task_output.content_path
-        ) if task_output else [],
+        tools=[],  # Initialize with empty list
         output_pydantic=RejectionOutput,
         context=[base_context, detect_content]
     )
     
+    # If you need dynamic tools, add a method to update them:
+    def update_task_tools(task_output):
+        if task_output and hasattr(task_output, 'content_type'):
+            tools = get_tools_for_content_type(
+                content_type=task_output.content_type,
+                content_path=task_output.content_path
+            )
+            check_content.tools = tools
+
     approve_content = Task(
         description=(
             "Process CLEARED or NEEDS_REVIEW content for quick approval response:\n"

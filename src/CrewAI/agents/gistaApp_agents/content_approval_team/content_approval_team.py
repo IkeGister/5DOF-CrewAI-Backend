@@ -43,18 +43,13 @@ from dotenv import load_dotenv
 import os
 import requests
 
+# Update imports to be relative
+from .content_approval_tasks import create_content_approval_tasks
+from .content_approval_agents import create_content_validator_agent as validator_creator
+
 # Original imports - kept for reference
 # from crewai_tools import WebsiteSearchTool, ScrapeWebsiteTool
 # from .content_approval_tools import create_directory_verification_tools
-
-# Defer these imports until they're needed to avoid circular imports
-def _get_task_creators():
-    from CrewAI.agents.gistaApp_agents.content_approval_team.content_approval_tasks import create_content_approval_tasks
-    return create_content_approval_tasks
-
-def _get_agent_creators():
-    from CrewAI.agents.gistaApp_agents.content_approval_team.content_approval_agents import create_content_validator_agent
-    return create_content_validator_agent
 
 class ContentApprovalTeam:
     """
@@ -127,12 +122,12 @@ class ContentApprovalTeam:
     def _setup_team(self):
         """Setup agents and tasks for the team"""
         # Get creators only when needed
-        create_content_validator_agent = _get_agent_creators()
-        create_content_approval_tasks = _get_task_creators()
+        from .content_approval_agents import create_content_validator_agent as validator_creator
+        from .content_approval_tasks import create_content_approval_tasks as tasks_creator
         
         # Create agent without tools
         self.agents = {
-            "content_validator": create_content_validator_agent(tools=[])
+            "content_validator": validator_creator(tools=[])
         }
         
         # Original agent creation with tools - kept for reference
@@ -147,7 +142,7 @@ class ContentApprovalTeam:
         # }
         
         # Create tasks
-        self.tasks = create_content_approval_tasks(self.agents)
+        self.tasks = tasks_creator(self.agents)
         
         # Create crew
         self.crew = Crew(

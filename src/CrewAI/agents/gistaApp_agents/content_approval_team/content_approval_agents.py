@@ -10,7 +10,7 @@ detailed content validation capabilities.
 from crewai import Agent
 from typing import List, Optional, Any
 from langchain.tools import BaseTool
-from CrewAI.agents.gistaApp_agents.content_approval_team.content_approval_tools import get_all_content_approval_tools
+from .content_approval_tools import get_all_content_approval_tools
 
 def create_content_validator_agent(tools: Optional[List[BaseTool]] = None):
     """

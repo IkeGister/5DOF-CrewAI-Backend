@@ -62,8 +62,8 @@ import os
 from typing import Dict, List
 from unittest.mock import patch
 
-from CrewAI.agents.gistaApp_agents.content_approval_team.content_approval_team import ContentApprovalTeam
-from CrewAI.agents.gistaApp_agents.content_approval_team.content_approval_tasks import ContentTypeOutput, RejectionOutput, ApprovalOutput
+from .content_approval_team import ContentApprovalTeam
+from .content_approval_tasks import ContentTypeOutput, RejectionOutput, ApprovalOutput
 
 class TestContentApproval(unittest.TestCase):
     @classmethod
