@@ -39,6 +39,7 @@ Notes:
 - Tools assigned to Task: Exclusively used for that specific task
 """
 import os  # Import os to access environment variables
+from typing import Optional
 
 # Importing necessary tools from crewai_tools
 from crewai_tools import (
@@ -54,7 +55,7 @@ from crewai_tools import (
 )
 
 # Importing tools specific to CrewAI
-from tools.travel_guide_tool import TravelGuideTool
+from CrewAI.tools.travel_guide_tool import TravelGuideTool
 
 # List of tool classes to instantiate
 TOOL_CLASSES = [
@@ -111,7 +112,7 @@ def file_reader_tools(file_path: str):
         PDFSearchTool(file_path=file_path)
     ]
 
-def search_serper_search_tools(search_query: str, url: str = None):
+def search_serper_search_tools(search_query: str, url: Optional[str] = None):
     """
     Create and return tools for searching with the SerperDevTool.
     
@@ -119,7 +120,7 @@ def search_serper_search_tools(search_query: str, url: str = None):
     - search_query: The query string to search for.
     - url: An optional URL to search within.
     """
-    search_tool = SerperDevTool(api_key=os.getenv("SERPER_API_KEY"))
+    search_tool = SerperDevTool()
     
     # Run the search tool with the provided query and URL
     results = search_tool._run(search_query=search_query, url=url)

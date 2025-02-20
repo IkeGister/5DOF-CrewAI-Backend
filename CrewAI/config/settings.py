@@ -15,7 +15,7 @@ MAX_TOKENS = 1500
 
 # Application Settings
 DEBUG_MODE = True
-VERBOSE_OUTPUT = 2  # 0: None, 1: Basic, 2: Detailed
+VERBOSE_OUTPUT = bool(2)  # or simply True if you want verbose output
 
 # Validate required settings
 def validate_settings():

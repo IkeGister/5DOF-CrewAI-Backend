@@ -40,9 +40,13 @@ Notes:
 """
 
 from crewai import Task
-from tools.content_gen_tools import create_test_research_tools, create_research_tools, create_directory_tools
-from tools.ticket_search_tool import TicketSearchTool
-from tools.travel_guide_tool import TravelGuideTool
+from CrewAI.tools.content_gen_tools import (
+    create_test_research_tools, 
+    create_research_tools, 
+    create_directory_tools
+)
+from CrewAI.tools.ticket_search_tool import TicketSearchTool
+from CrewAI.tools.travel_guide_tool import TravelGuideTool
 
 
 def create_content_tasks(planner, writer, editor):

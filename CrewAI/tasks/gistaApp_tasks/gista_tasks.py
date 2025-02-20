@@ -29,7 +29,7 @@ Gista App Tasks Module - Workflow Sequence
 """
 
 from crewai import Task
-from tools.gista_tools.gista_general_tools import GistaToolbox
+from CrewAI.tools.gista_tools.gista_general_tools import GistaToolbox
 from pydantic import BaseModel
 from typing import List, Optional, Dict, Any
 

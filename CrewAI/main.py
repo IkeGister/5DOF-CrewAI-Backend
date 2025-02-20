@@ -1,16 +1,19 @@
 import warnings
 import os
+import sys
 from crewai import Crew
-from agents.agents import create_content_agents, create_support_agents, create_travel_agents
-from tasks.crewAI_tasks import create_content_tasks, customer_support_task, create_travel_tasks, test_travel_agent_task
-from config.topics import get_topic, get_all_topics
-from config.settings import VERBOSE_OUTPUT, validate_settings
-from agents.gistaApp_agents.gista_agents import create_gista_agents
-from tasks.gistaApp_tasks.gista_tasks import (
+from CrewAI.agents.agents import create_content_agents, create_support_agents, create_travel_agents
+from CrewAI.tasks.crewAI_tasks import create_content_tasks, customer_support_task, create_travel_tasks, test_travel_agent_task
+from CrewAI.config.topics import get_topic, get_all_topics
+from CrewAI.config.settings import VERBOSE_OUTPUT, validate_settings
+from CrewAI.agents.gistaApp_agents.gista_agents import create_gista_agents
+from CrewAI.tasks.gistaApp_tasks.gista_tasks import (
     create_all_gista_tasks,
     create_script_production_tasks,
     create_voice_generation_tasks,
 )
+from CrewAI.agents.gistaApp_agents.content_approval_team.content_approval_team import ContentApprovalTeam
+from CrewAI.agents.gistaApp_agents.content_approval_team.run_content_approval_tests import run_content_approval_tests
 
 # Suppress warnings
 warnings.filterwarnings('ignore')
@@ -212,7 +215,10 @@ def create_gista_pipeline(content_source):
     # 3. Voice Generation Crew
     voice_crew = Crew(
         agents=[agent for agent in gista_agents["voice_generation"].values()],
-        tasks=create_voice_generation_tasks(gista_agents["voice_generation"]),
+        tasks=create_voice_generation_tasks(
+            voice_agents=gista_agents["voice_generation"],
+            script_agents=gista_agents["script_production"]
+        ),
         verbose=VERBOSE_OUTPUT,
         memory=True
     )
@@ -224,7 +230,7 @@ def create_gista_pipeline(content_source):
             inputs={"content_source": content_source}
         )
         
-        if content_result.get("content_status") == "CLEARED":
+        if isinstance(content_result, dict) and content_result.get("content_status") == "CLEARED":
             # Generate scripts
             script_result = script_crew.kickoff(
                 inputs={"content_analysis": content_result}
@@ -250,6 +256,47 @@ def create_gista_pipeline(content_source):
     except Exception as e:
         print(f"Error in pipeline: {str(e)}")
         raise
+
+def create_content_approval_crew(content_source: str):
+    """
+    Create and run a crew for content approval
+    
+    Args:
+        content_source (str): URL, PDF path, or DOCX path to source content
+        
+    Returns:
+        dict: Results from the content approval process
+    """
+    # Validate settings
+    validate_settings()
+    
+    # Create content approval team
+    approval_team = ContentApprovalTeam(verbose=bool(VERBOSE_OUTPUT))
+    
+    try:
+        # Process the content
+        result = approval_team.process_content(content_source)
+        return result
+    except Exception as e:
+        print(f"Error in content approval: {str(e)}")
+        return {
+            "status": "error",
+            "error_message": str(e),
+            "error_type": type(e).__name__
+        }
+
+def run_approval_tests():
+    """Run the content approval test suite"""
+    print("\nRunning Content Approval Tests...")
+    print("=" * 50)
+    
+    try:
+        # Run all test categories
+        test_result = run_content_approval_tests(verbose=bool(VERBOSE_OUTPUT))
+        return test_result
+    except Exception as e:
+        print(f"Error running tests: {str(e)}")
+        return 1
 
 if __name__ == "__main__":
     # Add this at the start
@@ -291,3 +338,11 @@ if __name__ == "__main__":
     # Or using pipeline of crews
     pipeline_result = create_gista_pipeline(content_source)
     print("Pipeline Generation Result:", pipeline_result)
+
+    # Example usage for content approval
+    approval_result = create_content_approval_crew(content_source)
+    print("Content Approval Result:", approval_result)
+    
+    # Run content approval tests
+    if "--test" in sys.argv:
+        sys.exit(run_approval_tests())

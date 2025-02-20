@@ -35,10 +35,10 @@ class ElevenLabsVoiceoverTool(BaseTool):
     
     name: str = "ElevenLabs Voiceover Tool"
     description: str = "Generates voiceovers for podcast segments"
-    args_schema: Type[VoiceoverRequestSchema] = VoiceoverRequestSchema
+    args_schema: Type[BaseModel] = VoiceoverRequestSchema
     
     # Instance variables need to be declared as class variables with types
-    client: ElevenLabs = None
+    client: Optional[ElevenLabs] = None
     model_id: str = "eleven_monolingual_v1"
 
     # Voice IDs with type annotation
@@ -49,7 +49,10 @@ class ElevenLabsVoiceoverTool(BaseTool):
     }
 
     def __init__(self):
-        super().__init__()
+        super().__init__(
+            name=self.name,
+            description=self.description
+        )
         api_key = os.getenv("ELEVENLABS_API_KEY")
         if not api_key:
             raise ValueError("ELEVENLABS_API_KEY environment variable not set")
@@ -72,6 +75,8 @@ class ElevenLabsVoiceoverTool(BaseTool):
             previous_segment_ids: Optional IDs of previous segments
         """
         try:
+            if not self.client:
+                raise ValueError("ElevenLabs client not initialized")
             voice_id = self.VOICE_IDS.get(voice_role)
             if not voice_id:
                 raise ValueError(f"Invalid voice role: {voice_role}")
@@ -299,6 +304,8 @@ class ElevenLabsVoiceoverTool(BaseTool):
             Dict containing status and file path if successful
         """
         try:
+            if not self.client:
+                raise ValueError("ElevenLabs client not initialized")
             # Validate text is not empty
             if not text.strip():
                 return {

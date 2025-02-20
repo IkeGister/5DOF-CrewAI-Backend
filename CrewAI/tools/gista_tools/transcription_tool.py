@@ -16,7 +16,7 @@ class TranscriptionTool(BaseTool):
     
     name: str = "Transcription Tool"
     description: str = "Generates clean transcripts from podcast segments"
-    args_schema: type[TranscriptionRequest] = TranscriptionRequest
+    args_schema: type[BaseModel] = TranscriptionRequest
 
     def _run(
         self, 
@@ -80,5 +80,11 @@ class TranscriptionTool(BaseTool):
 
     def _generate_timestamped_transcript(self, segments: list, metadata: Dict) -> str:
         """Generate a transcript with timestamp markers"""
-        # Implementation for timestamped format
-        pass 
+        transcript = [f"# {metadata['title']}\n"]
+        transcript.append(f"Source: {metadata['source']}\n\n")
+        
+        for i, segment in enumerate(segments):
+            timestamp = f"[{i * 30:02d}:00]"  # Simple timestamp estimation
+            transcript.append(f"{timestamp} {segment.voice_role.upper()}: {segment.text}\n\n")
+            
+        return "".join(transcript) 

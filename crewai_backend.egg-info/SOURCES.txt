@@ -1,0 +1,10 @@
+README.md
+setup.py
+CrewAI/__init__.py
+CrewAI/directories.py
+CrewAI/main.py
+crewai_backend.egg-info/PKG-INFO
+crewai_backend.egg-info/SOURCES.txt
+crewai_backend.egg-info/dependency_links.txt
+crewai_backend.egg-info/requires.txt
+crewai_backend.egg-info/top_level.txt

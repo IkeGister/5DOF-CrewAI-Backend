@@ -1,6 +1,7 @@
 from crewai_tools import BaseTool, SerperDevTool
-from typing import List, Optional, Type
-from pydantic.v1 import BaseModel, Field, EmailStr
+from typing import List, Optional, Type, Dict
+from pydantic import BaseModel, Field, EmailStr
+from pydantic.v1 import BaseModel as V1BaseModel  # Import V1BaseModel
 import os
 from dotenv import load_dotenv
 
@@ -10,10 +11,10 @@ print("Current Environment Variables:")
 for key, value in os.environ.items():
     print(f"{key}: {value}")
 
-class TicketSearchSchema(BaseModel):
+class TicketSearchSchema(V1BaseModel):  # Use V1BaseModel
     """Schema for the ticket search tool - defines all required and optional fields for ticket search"""
     full_name: str = Field(..., description="The full name of the traveler.")
-    email: EmailStr = Field(..., description="The email address to send tickets to.")
+    email: str = Field(..., pattern=r"^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$", description="The email address to send tickets to.")
     traveling_from: str = Field(..., description="The departure location.")
     traveling_to: str = Field(..., description="The destination location.")
     travel_date: str = Field(..., description="The date of travel in YYYY-MM-DD format.")
@@ -39,13 +40,18 @@ class TicketSearchTool(BaseTool):
     """
     name: str = "Ticket Search Tool"
     description: str = "Searches for tickets based on various travel details."
-    args_schema: Type[BaseModel] = TicketSearchSchema
+    args_schema: Type[V1BaseModel] = TicketSearchSchema  # Use V1BaseModel type
     search_tool: Optional[SerperDevTool] = None
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self) -> None:
+        super().__init__(
+            name=self.name,
+            description=self.description
+        )
+        self.args_schema = TicketSearchSchema
         self.search_tool = SerperDevTool()
-        os.environ["SERPER_API_KEY"] = "5591e3125ff4adc849b11d93ef95a91bfb615972"
+        if not os.getenv("SERPER_API_KEY"):
+            os.environ["SERPER_API_KEY"] = os.getenv("SERPER_API_KEY", "your-default-key")
 
     def _run(self, **kwargs) -> List[str]:
         """
@@ -57,6 +63,9 @@ class TicketSearchTool(BaseTool):
         Returns:
             List[str]: Formatted search results including passenger details and flight options
         """
+        if not self.search_tool:
+            self.search_tool = SerperDevTool()
+            
         search_query = f"flights from {kwargs['traveling_from']} to {kwargs['traveling_to']} on {kwargs['travel_date']}"
         search_results = self.search_tool._run(search_query=search_query)
         

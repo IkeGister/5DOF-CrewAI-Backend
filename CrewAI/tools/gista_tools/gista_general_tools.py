@@ -383,7 +383,7 @@ class GistaToolbox:
             if generate_transcript:
                 transcript = self.transcription._run(
                     segments=parsed_result["segments"],
-                    metadata=parsed_result["metadata"],
+                    metadata={"segments": parsed_result["segments"]},
                     format_type="clean"
                 )
                 results["transcript"] = transcript

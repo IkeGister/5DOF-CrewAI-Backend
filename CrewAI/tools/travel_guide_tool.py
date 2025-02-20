@@ -19,15 +19,21 @@ class TravelGuideTool(BaseTool):
     search_tool: Optional[SerperDevTool] = None  # Declare search_tool as class variable
 
     def __init__(self):
-        super().__init__()
-        self.search_tool = SerperDevTool()  # Initialize in constructor
-        os.environ["SERPER_API_KEY"] = "5591e3125ff4adc849b11d93ef95a91bfb615972"
+        super().__init__(
+            name=self.name,
+            description=self.description
+        )
+        self.search_tool = SerperDevTool()
+        if not os.getenv("SERPER_API_KEY"):
+            os.environ["SERPER_API_KEY"] = os.getenv("SERPER_API_KEY", "your-default-key")
 
-    def _run(self, **kwargs) -> List[str]:  # Change to kwargs pattern
+    def _run(self, **kwargs) -> List[str]:
+        if not self.search_tool:
+            self.search_tool = SerperDevTool()
+        
         location = kwargs['location']
         travel_date = kwargs['travel_date']
         
-        # Use instance variable instead of creating new one
         weather_results = self.search_tool._run(
             search_query=f"weather in {location} on {travel_date}")
         

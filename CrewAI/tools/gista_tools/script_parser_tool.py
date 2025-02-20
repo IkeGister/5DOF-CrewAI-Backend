@@ -1,6 +1,6 @@
 from crewai_tools import BaseTool
 from pydantic.v1 import BaseModel, Field
-from typing import List, Dict
+from typing import List, Dict, Any
 
 class PodcastSegment(BaseModel):
     voice_role: str
@@ -13,7 +13,7 @@ class ScriptParserTool(BaseTool):
     name: str = "Script Parser Tool"
     description: str = "Converts markdown podcast scripts into structured segments"
 
-    def _run(self, markdown_content: str) -> Dict[str, List[PodcastSegment]]:
+    def _run(self, markdown_content: str) -> Dict[str, Any]:
         segments = []
         current_voice = None
         current_text = []
@@ -41,6 +41,14 @@ class ScriptParserTool(BaseTool):
             }
         }
 
+    def _extract_title(self, content: str) -> str:
+        return "Untitled"
+
+    def _extract_source(self, content: str) -> str:
+        return "Unknown"
+
     def _determine_segment_type(self, voice: str, text: List[str]) -> str:
         # Logic to determine if segment is readout, qa, intro, etc.
-        pass 
+        if "host" in voice.lower():
+            return "qa"
+        return "readout"  # Default type 

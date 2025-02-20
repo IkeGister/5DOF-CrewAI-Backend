@@ -1,3 +1,5 @@
+from typing import Optional
+
 CONTENT_TOPICS = {
     "technology": [
         "Artificial Intelligence",
@@ -28,7 +30,7 @@ def get_topic(category: str, index: int = 0) -> str:
     """
     return CONTENT_TOPICS.get(category, [])[index]
 
-def get_all_topics(category: str = None) -> list:
+def get_all_topics(category: Optional[str] = None) -> list:
     """
     Get all topics or topics from a specific category
     """

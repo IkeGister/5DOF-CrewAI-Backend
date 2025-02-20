@@ -4,6 +4,8 @@ import unittest
 import datetime
 from pathlib import Path
 import warnings
+from typing import Dict, Any
+
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from tasks.gistaApp_tasks.gista_tasks import (
@@ -15,25 +17,17 @@ from tasks.gistaApp_tasks.gista_tasks import (
 from agents.gistaApp_agents.gista_agents import create_gista_agents
 from config.settings import validate_settings
 
-try:
-    from IPython.display import Markdown
-    IN_NOTEBOOK = True
-except ImportError:
-    IN_NOTEBOOK = False
-
-warnings.filterwarnings("ignore", message="Mixing V1 models and V2 models")
+def format_markdown(text: str) -> str:
+    """Format text as markdown in notebook or plain text in terminal"""
+    return text
 
 def display_result(result):
     """Display result in markdown if in notebook, otherwise print"""
     if isinstance(result, dict):
         result = '\n'.join([f"**{k}**: {v}" for k, v in result.items()])
-        
-    if IN_NOTEBOOK:
-        return Markdown(result)
-    else:
-        print(result)
+    return format_markdown(result)
 
-def create_test_pipeline(content_source):
+def create_test_pipeline(content_source) -> Dict:
     """Create and run a test pipeline for content assessment and script production"""
     validate_settings()
     
@@ -85,23 +79,21 @@ def create_test_pipeline(content_source):
         # Execute pipeline
         content_result = content_crew.kickoff(inputs={"content_source": content_source})
         
-        if content_result.get("content_status") == "CLEARED":
-            script_result = script_crew.kickoff(inputs={"content_analysis": content_result})
-            
-            return {
-                "status": "completed",
-                "content_analysis": content_result,
-                "script_generation": script_result
-            }
-        else:
+        if isinstance(content_result, dict):
+            if content_result.get("content_status") == "CLEARED":
+                script_result = script_crew.kickoff(inputs={"content_analysis": content_result})
+                return {
+                    "status": "completed",
+                    "content_analysis": content_result,
+                    "script_generation": script_result
+                }
             return {
                 "status": "content_rejected",
                 "details": content_result
             }
-        
+        return {"status": "error", "details": "Invalid content result"}
     except Exception as e:
-        print(f"Error in pipeline: {str(e)}")
-        raise
+        return {"status": "error", "details": str(e)}
 
 class TestGistaWorkflow(unittest.TestCase):
     @classmethod

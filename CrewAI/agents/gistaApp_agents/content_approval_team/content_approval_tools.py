@@ -1,5 +1,5 @@
 import os  # Import os to access environment variables
-from typing import List
+from typing import List, Optional
 from langchain.tools import BaseTool  # Add this import
 
 # Importing necessary tools from crewai_tools
@@ -11,7 +11,20 @@ from crewai_tools import (
     ScrapeWebsiteTool
 )
 
-def create_website_verification_tools(url: str = None) -> List:
+def create_gista_websearch_tool(website: Optional[str] = None) -> WebsiteSearchTool:
+    """
+    Creates a configured WebsiteSearchTool for Gista content verification.
+    
+    Parameters:
+    - website: Optional specific website URL to analyze
+    
+    Returns:
+    - Configured WebsiteSearchTool instance
+    """
+    search_tool = WebsiteSearchTool(website=website) if website else WebsiteSearchTool()
+    return search_tool
+
+def create_website_verification_tools(url: Optional[str] = None) -> List:
     """
     Create tools for verifying website content.
     
@@ -23,8 +36,8 @@ def create_website_verification_tools(url: str = None) -> List:
     """
     tools = []
     
-    # General website search tool
-    tools.append(WebsiteSearchTool())
+    # Use the abstracted website search tool
+    tools.append(create_gista_websearch_tool())
     
     # Add specific URL scraping tool if URL is provided
     if url:
@@ -32,7 +45,7 @@ def create_website_verification_tools(url: str = None) -> List:
     
     return tools
 
-def create_document_verification_tools(file_path: str = None) -> List:
+def create_document_verification_tools(file_path: Optional[str] = None) -> List:
     """
     Create tools for verifying document content (DOCX, PDF).
     
@@ -59,7 +72,7 @@ def create_document_verification_tools(file_path: str = None) -> List:
     
     return tools
 
-def create_directory_verification_tools(directory: str) -> BaseTool:
+def create_directory_verification_tools(directory: str) -> DirectoryReadTool:
     """
     Create tools for verifying content in a directory.
     
@@ -67,9 +80,22 @@ def create_directory_verification_tools(directory: str) -> BaseTool:
         directory (str): Path to directory to verify
         
     Returns:
-        BaseTool: Tool for directory content verification
+        DirectoryReadTool: Tool for directory content verification
     """
     return DirectoryReadTool(directory=directory)
+
+def create_gista_scrape_tool(website_url: Optional[str] = None) -> ScrapeWebsiteTool:
+    """
+    Creates a configured ScrapeWebsiteTool for Gista content extraction.
+    
+    Parameters:
+    - website_url: Specific website URL to scrape
+    
+    Returns:
+    - Configured ScrapeWebsiteTool instance
+    """
+    scrape_tool = ScrapeWebsiteTool(website_url=website_url) if website_url else ScrapeWebsiteTool()
+    return scrape_tool
 
 def get_all_content_approval_tools() -> List:
     """

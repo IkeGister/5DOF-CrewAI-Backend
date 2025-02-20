@@ -1,36 +1,24 @@
 import sys
 import os
+import unittest
+from pathlib import Path
 from dotenv import load_dotenv
+
+# Set up environment before imports
+load_dotenv()  # Keep this to load environment variables
+if not os.getenv("SERPER_API_KEY"):
+    raise ValueError("SERPER_API_KEY is not set in environment variables")
+
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from agents.agents import create_travel_agents
 from tools.travel_guide_tool import TravelGuideTool
 
-try:
-    from IPython.display import Markdown
-    IN_NOTEBOOK = True
-except ImportError:
-    IN_NOTEBOOK = False
-
-load_dotenv()  # Load environment variables from .env file
-
-# Debugging: Print the SERPER_API_KEY
-serper_api_key = os.getenv("SERPER_API_KEY")
-print("SERPER_API_KEY in Test:", serper_api_key)
-
-if not serper_api_key:
-    raise ValueError("SERPER_API_KEY is not set in environment variables")
-
 def display_result(result):
-    """Display result in markdown if in notebook, otherwise print"""
-    # If result is a list, convert it to a string
+    """Display result in test environment"""
     if isinstance(result, list):
         result = '\n'.join(result)
-        
-    if IN_NOTEBOOK:
-        return Markdown(result)
-    else:
-        print(result)
+    print(result)
 
 def test_travel_agent():
     """

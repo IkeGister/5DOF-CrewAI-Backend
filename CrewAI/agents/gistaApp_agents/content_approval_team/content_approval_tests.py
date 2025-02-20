@@ -1,24 +1,75 @@
 """
-Content Approval Tests
-=====================
+Content Approval Test Suite
+==========================
 
-Test suite for content approval functionality.
-Tests the ContentApprovalTeam's ability to validate different content types.
+This test suite validates the content approval workflow with four main categories:
+
+1. Task Progression Tests
+------------------------
+- Verifies tasks execute in correct order: detect_content -> check_content -> approve/reject
+- Ensures task dependencies and context passing
+- Tests early rejection for invalid content
+Expected outcomes:
+- Valid content: detect -> check -> approve
+- Invalid content: detect -> reject
+- Proper context passing between tasks
+
+2. Content Type Tests
+--------------------
+- Tests handling of different content formats:
+  * URLs (valid, invalid, paywalled)
+  * PDFs
+  * DOCX files
+Expected outcomes:
+- Correct content type detection
+- Appropriate tool selection
+- Proper validation based on type
+
+3. Access Tests
+--------------
+- Tests handling of:
+  * Paywalled content
+  * Sign-in required content
+  * Invalid/non-existent content
+Expected outcomes:
+- Early rejection with appropriate error codes
+- Clear rejection reasons
+- Helpful suggestions
+
+4. Tool Usage Tests
+------------------
+- Validates tool selection based on content type
+- Ensures tools receive proper configuration
+- Checks tool execution order
+Expected outcomes:
+- URL content uses web tools
+- PDF content uses PDF tools
+- DOCX content uses document tools
+
+Test Resources
+-------------
+- test_urls: Dictionary of test URLs (valid, invalid, paywalled)
+- test_files: Dictionary of test files (PDF, DOCX)
+- validation helpers: Methods to check response structures
+
+Usage:
+    python -m unittest content_approval_tests.py -v
 """
 
 import unittest
 from pathlib import Path
 import os
-from typing import Dict
+from typing import Dict, List
+from unittest.mock import patch
 
-from .content_approval_team import ContentApprovalTeam
-from .content_approval_tasks import RejectionOutput, ApprovalOutput
+from CrewAI.agents.gistaApp_agents.content_approval_team.content_approval_team import ContentApprovalTeam
+from CrewAI.agents.gistaApp_agents.content_approval_team.content_approval_tasks import ContentTypeOutput, RejectionOutput, ApprovalOutput
 
 class TestContentApproval(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         """Set up test resources"""
-        cls.team = ContentApprovalTeam(verbose=False)
+        cls.team = ContentApprovalTeam(verbose=True)  # Enable verbose for task tracking
         cls.test_objects_path = Path(__file__).parent.parent.parent.parent / "test_objects"
         
         # Test URLs
@@ -135,14 +186,120 @@ class TestContentApproval(unittest.TestCase):
 
     def test_tool_functionality(self):
         """Test if tools are working correctly"""
-        # Test website search tool
-        self.assertIn("website_search", self.team.get_tools())
+        tools = self.team.get_tools()
+        self.assertIsInstance(tools, dict)
+        # Test that tools exist when needed
+        self.team.process_content(self.test_urls["valid"])
+        tools = self.team.get_tools()
+        self.assertGreater(len(tools), 0)
+
+    def test_task_progression(self):
+        """
+        Test task execution order and progression.
         
-        # Test website scraper
-        self.assertIn("website_scraper", self.team.get_tools())
+        Expected Flows:
+        1. Valid content:
+           detect_content -> check_content -> approve_content
         
-        # Test directory reader
-        self.assertIn("directory_reader", self.team.get_tools())
+        2. Invalid content:
+           detect_content -> reject_content
+        
+        3. Valid but restricted content:
+           detect_content -> check_content -> reject_content
+        """
+        executed_tasks = []
+        
+        def track_task_execution(task_output):
+            """Callback to track task execution order"""
+            task_name = task_output.get("task_name", "unknown")
+            executed_tasks.append(task_name)
+        
+        # Create team with task tracking
+        team = ContentApprovalTeam(verbose=True)
+        team.task_callback = track_task_execution
+        
+        # Process a valid URL
+        result = team.process_content(self.test_urls["valid"])
+        
+        # Verify task order
+        expected_order = ["detect_content", "check_content", "approve_content"]
+        self.assertEqual(executed_tasks, expected_order)
+
+    def test_task_dependencies(self):
+        """Test that tasks receive proper context from previous tasks"""
+        with patch('crewai.Task.execute') as mock_execute:
+            # Process content
+            self.team.process_content(self.test_urls["valid"])
+            
+            # Get all task calls
+            calls = mock_execute.call_args_list
+            
+            # Verify check_content received detect_content output
+            check_content_call = calls[1]
+            self.assertIn('context', check_content_call.kwargs)
+            self.assertIsInstance(
+                check_content_call.kwargs['context'].get('content_type_result'),
+                ContentTypeOutput
+            )
+
+    def test_early_rejection(self):
+        """Test that invalid content is rejected early"""
+        executed_tasks = []
+        
+        def track_task_execution(task_output):
+            task_name = task_output.get("task_name", "unknown")
+            executed_tasks.append(task_name)
+        
+        team = ContentApprovalTeam(verbose=True)
+        team.task_callback = track_task_execution
+        
+        # Process invalid content
+        result = team.process_content(self.test_urls["dummy"])
+        
+        # Verify only detection and rejection tasks ran
+        expected_order = ["detect_content", "reject_content"]
+        self.assertEqual(executed_tasks, expected_order)
+
+    def test_tool_selection(self):
+        """
+        Test dynamic tool selection based on content type.
+        
+        Expected Tools:
+        - URLs: website_search, website_scraper
+        - PDFs: pdf_reader
+        - DOCX: docx_reader
+        
+        Tools should be:
+        1. Correctly configured with content path
+        2. Only relevant tools available to task
+        3. Properly initialized with necessary credentials
+        """
+        # Test URL content
+        result = self.team.process_content(self.test_urls["valid"])
+        task_tools = self.team.get_tasks()[1].tools  # check_content task
+        self.assertTrue(
+            any(tool.name == "website_search" for tool in task_tools),
+            "URL content should use website search tool"
+        )
+        
+        # Test PDF content
+        if self.test_files["pdf"].exists():
+            result = self.team.process_content(str(self.test_files["pdf"]))
+            task_tools = self.team.get_tasks()[1].tools
+            self.assertTrue(
+                any(tool.name == "pdf_reader" for tool in task_tools),
+                "PDF content should use PDF reader tool"
+            )
+
+    def validate_task_output(self, task_output: Dict, expected_type: type) -> None:
+        """Helper to validate task output structure"""
+        self.assertIsInstance(task_output, expected_type)
+        if expected_type == ContentTypeOutput:
+            self.assertIn("content_type", task_output)
+            self.assertIn("validation_tools", task_output)
+        elif expected_type in [ApprovalOutput, RejectionOutput]:
+            self.assertIn("status", task_output)
+            self.assertIn("metadata", task_output)
 
     @classmethod
     def tearDownClass(cls):
@@ -151,7 +308,7 @@ class TestContentApproval(unittest.TestCase):
 
 def run_tests():
     """Run the test suite"""
-    unittest.main()
+    unittest.main(verbosity=2)  # Increased verbosity for better test output
 
 if __name__ == "__main__":
     run_tests()

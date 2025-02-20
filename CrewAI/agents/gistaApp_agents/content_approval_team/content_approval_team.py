@@ -6,19 +6,55 @@ This module manages the content approval team/crew, which is responsible for:
 1. Initial content validation
 2. Access verification
 3. Content approval/rejection decisions
+
+Task Execution Order
+-------------------
+The content approval process follows this specific order:
+
+1. detect_content:
+   - Determines content type (URL, PDF, DOCX)
+   - Validates basic accessibility
+   - Returns ContentTypeOutput with appropriate tools
+
+2. check_content:
+   - Uses tools specified by detect_content
+   - Performs deep content validation
+   - Extracts and analyzes content
+   - Returns initial validation results
+
+3. approve_content (conditional):
+   - Executes if content passes validation
+   - Processes approved content
+   - Generates approval documentation
+
+4. reject_content (conditional):
+   - Executes if content fails validation
+   - Generates detailed rejection reason
+   - Provides improvement suggestions
+
+Each task's output serves as context for subsequent tasks, ensuring
+a progressive validation process.
 """
 
 from crewai import Crew
-from typing import Dict, List, Optional
-from crewai_tools import WebsiteSearchTool, ScrapeWebsiteTool
-import os
-from dotenv import load_dotenv
+from typing import Dict, List, Optional, Any, Callable
 from pathlib import Path
+from dotenv import load_dotenv
+import os
 import requests
 
-from .content_approval_tasks import create_content_approval_tasks
-from .content_approval_agents import create_content_validator_agent
-from .content_approval_tools import create_directory_verification_tools
+# Original imports - kept for reference
+# from crewai_tools import WebsiteSearchTool, ScrapeWebsiteTool
+# from .content_approval_tools import create_directory_verification_tools
+
+# Defer these imports until they're needed to avoid circular imports
+def _get_task_creators():
+    from CrewAI.agents.gistaApp_agents.content_approval_team.content_approval_tasks import create_content_approval_tasks
+    return create_content_approval_tasks
+
+def _get_agent_creators():
+    from CrewAI.agents.gistaApp_agents.content_approval_team.content_approval_agents import create_content_validator_agent
+    return create_content_validator_agent
 
 class ContentApprovalTeam:
     """
@@ -40,7 +76,7 @@ class ContentApprovalTeam:
         self.agents = {}
         self.tasks = []
         self.crew = None
-        self.tools = self._initialize_tools()
+        self.task_callback: Optional[Callable[[Any], None]] = None
         
         # Initialize team
         self._setup_team()
@@ -69,59 +105,82 @@ class ContentApprovalTeam:
                 "OPENAI_API_KEY not found in environment variables. "
                 "Please set it in your .env file"
             )
-    
-    def _initialize_tools(self) -> Dict:
-        """Initialize all tools needed by the team"""
-        # Get directory containing content_approval_directories.yaml
-        content_dir = Path(__file__).parent  # Current directory containing YAML file
-        
-        return {
-            "website_search": WebsiteSearchTool(),
-            "website_scraper": ScrapeWebsiteTool(),
-            "directory_reader": create_directory_verification_tools(directory=str(content_dir))
-        }
-    
+
+    # Original tool initialization method - kept for reference
+    # def _initialize_tools(self) -> Dict:
+    #     """Initialize all tools needed by the team"""
+    #     yaml_path = Path(__file__).parent / "content_approval_directories.yaml"
+    #     print(f"YAML file path: {yaml_path}")
+    #     print(f"YAML file exists: {yaml_path.exists()}")
+    #     
+    #     content_dir = yaml_path.parent
+    #     
+    #     return {
+    #         "website_search": WebsiteSearchTool(),
+    #         "website_scraper": ScrapeWebsiteTool(),
+    #         "directory_reader": create_directory_verification_tools(
+    #             directory=str(content_dir),
+    #             config_path=str(yaml_path)
+    #         )
+    #     }
+
     def _setup_team(self):
         """Setup agents and tasks for the team"""
-        # Create agents with all tools
+        # Get creators only when needed
+        create_content_validator_agent = _get_agent_creators()
+        create_content_approval_tasks = _get_task_creators()
+        
+        # Create agent without tools
         self.agents = {
-            "content_validator": create_content_validator_agent(
-                tools=[
-                    self.tools["website_search"],
-                    self.tools["website_scraper"],
-                    self.tools["directory_reader"]
-                ]
-            )
+            "content_validator": create_content_validator_agent(tools=[])
         }
         
-        # Create tasks (directory tool already assigned in tasks)
+        # Original agent creation with tools - kept for reference
+        # self.agents = {
+        #     "content_validator": create_content_validator_agent(
+        #         tools=[
+        #             self.tools["website_search"],
+        #             self.tools["website_scraper"],
+        #             self.tools["directory_reader"]
+        #         ]
+        #     )
+        # }
+        
+        # Create tasks
         self.tasks = create_content_approval_tasks(self.agents)
         
         # Create crew
         self.crew = Crew(
             agents=[self.agents["content_validator"]],
             tasks=self.tasks,
-            verbose=self.verbose,
-            process_type="sequential"
+            verbose=self.verbose
         )
+
+    def _map_crew_output(self, result: Any) -> Dict:
+        """Converts the crew output to a dictionary if needed."""
+        if hasattr(result, "dict"):
+            return result.dict()
+        elif isinstance(result, dict):
+            return result
+        else:
+            raise ValueError("Crew output is not a dictionary")
     
     def process_content(self, content_source: str) -> Dict:
         """Process content for approval."""
         try:
-            # Add debug logging
+            if self.crew is None:
+                raise ValueError("Crew has not been initialized")
             print(f"\nProcessing content: {content_source}")
             
-            result = self.crew.kickoff(
-                inputs={"content_source": content_source}
-            )
-            
-            # Add debug logging for result
+            raw_result = self.crew.kickoff(inputs={"content_source": content_source})
+            if self.task_callback:
+                self.task_callback(raw_result)
+            result = self._map_crew_output(raw_result)
             print(f"Crew result: {result}")
-            
+
             content_status = result.get("content_status", "UNKNOWN")
             error_code = result.get("error_code")
-            
-            # If we have an error_code in the result, use it
+
             if error_code:
                 return {
                     "status": "rejected",
@@ -131,16 +190,14 @@ class ContentApprovalTeam:
                     "suggestions": result.get("suggestions", []),
                     "metadata": result.get("metadata", {})
                 }
-            
-            # If content is cleared, return completed
-            if content_status == "CLEARED":
+
+            if content_status in ["CLEARED", "approved"]:
                 return {
                     "status": "completed",
                     "content_status": content_status,
                     "details": result
                 }
-            
-            # Default rejection with processing error
+
             return {
                 "status": "rejected",
                 "error_code": "PROCESSING_ERROR",
@@ -149,9 +206,9 @@ class ContentApprovalTeam:
                 "suggestions": ["Try a different source"],
                 "metadata": {}
             }
-            
+
         except Exception as e:
-            print(f"Exception caught: {type(e).__name__}: {str(e)}")  # Debug logging
+            print(f"Exception caught: {type(e).__name__}: {str(e)}")
             return {
                 "status": "rejected",
                 "error_code": "PROCESSING_ERROR",
@@ -161,6 +218,7 @@ class ContentApprovalTeam:
                 "metadata": {}
             }
     
+    # Utility methods
     def get_agents(self) -> Dict:
         """Get all agents in the team"""
         return self.agents
@@ -171,8 +229,22 @@ class ContentApprovalTeam:
     
     def get_crew(self) -> Crew:
         """Get the crew instance"""
+        if self.crew is None:
+            raise ValueError("Crew has not been initialized")
         return self.crew
     
+    def kickoff(self, **kwargs):
+        """Start the content approval process"""
+        if self.crew is None:
+            raise ValueError("Crew has not been initialized")
+        return self.crew.kickoff(**kwargs)
+
     def get_tools(self) -> Dict:
-        """Get all tools available to the team"""
-        return self.tools
+        """Get all tools used by the team"""
+        tools = {}
+        if (self.agents and "content_validator" in self.agents 
+            and hasattr(self.agents["content_validator"], "tools") 
+            and self.agents["content_validator"].tools is not None):
+            for tool in self.agents["content_validator"].tools:
+                tools[tool.name] = tool
+        return tools

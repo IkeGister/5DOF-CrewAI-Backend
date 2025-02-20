@@ -5,21 +5,11 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from agents.agents import create_support_agents
 from main import create_support_crew
 
-try:
-    from IPython.display import Markdown
-    IN_NOTEBOOK = True
-except ImportError:
-    IN_NOTEBOOK = False
-
 def display_result(result):
-    """Display result in markdown if in notebook, otherwise print"""
+    """Display result in test environment"""
     if isinstance(result, list):
         result = '\n'.join(result)
-        
-    if IN_NOTEBOOK:
-        return Markdown(result)
-    else:
-        print(result)
+    print(result)
 
 def test_customer_support():
     """
