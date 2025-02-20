@@ -12,13 +12,34 @@ A sophisticated AI system that works like a well-coordinated team, handling task
 ## 🏗️ Project Structure
 
 ```
-CrewAI/
-├── agents/              # The AI team members
-├── tasks/              # What each team member does
-├── tools/              # Tools the team uses
-│   ├── gista_tools/    # Specialized podcast creation tools
-│   └── content_tools/  # General content handling tools
-└── config/             # System settings
+CrewAI-Backend/
+├── CrewAI/
+│   ├── agents/
+│   │   ├── agents.py
+│   │   └── gistaApp_agents/
+│   │       ├── content_analysis_team/
+│   │       ├── content_approval_team/
+│   │       ├── script_writing_team/
+│   │       └── voice_production_team/
+│   ├── config/
+│   │   ├── llm_config.py
+│   │   ├── settings.py
+│   │   ├── topics.py
+│   │   └── voice_config.yaml
+│   ├── tasks/
+│   │   ├── crewAI_tasks.py
+│   │   └── gistaApp_tasks/
+│   ├── tools/
+│   │   ├── gista_tools/
+│   │   ├── content_gen_tools.py
+│   │   ├── ticket_search_tool.py
+│   │   └── travel_guide_tool.py
+│   ├── tests/
+│   │   └── [various test files]
+│   └── utils/
+├── db/                 # Database files
+├── test_objects/       # Test assets
+└── setup.py           # Package configuration
 ```
 
 ## 🚀 Getting Started

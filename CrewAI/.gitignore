@@ -10,6 +10,7 @@ __pycache__/
 .Python
 *.egg-info/
 *.egg
+.mypy_cache/
 
 # Jupyter
 .ipynb_checkpoints/
