@@ -177,3 +177,38 @@ content_approval_guidelines:
         - Technical accuracy verified by expert agents
         - Source credibility evaluated in research phase
         - Skip complex checks if basic access succeeds
+
+  validation_outputs:
+    acceptance:
+      status: "approved"
+      production_state: "in_production"
+      success_codes:
+        ACC200: "Content validated - All criteria met"
+        ACC201: "Content validated - Meets minimum requirements"
+        ACC202: "Content validated - High quality content"
+        ACC203: "Content validated - Premium source"
+      success_format: "{success_code}: {success_message}"
+    
+    rejection:
+      status: "rejected"
+      production_state: "invalid_content"
+      error_codes:
+        accessibility:
+          ACC001: "Content inaccessible - Dead or invalid URL"
+          ACC002: "Content inaccessible - Requires login/paywall"
+          ACC003: "Content inaccessible - Geo-restricted"
+          ACC004: "Content inaccessible - Technical error"
+        content:
+          CON001: "Content too short - Below minimum length"
+          CON002: "Content type not supported"
+          CON003: "Content quality insufficient"
+          CON004: "Content is placeholder/example only"
+        security:
+          SEC001: "Security risk - Malicious content detected"
+          SEC002: "Security risk - Unsafe domain"
+          SEC003: "Security risk - SSL certificate invalid"
+        format:
+          FMT001: "Format error - Content structure invalid"
+          FMT002: "Format error - Content not parseable"
+          FMT003: "Format error - Missing required metadata"
+      error_format: "{error_code}: {error_message}"

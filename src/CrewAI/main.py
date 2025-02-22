@@ -9,7 +9,6 @@ import sys
 from crewai import Crew
 from .config.settings import VERBOSE_OUTPUT, validate_settings
 from .agents.gistaApp_agents.content_approval_team.content_approval_team import ContentApprovalTeam
-from .agents.gistaApp_agents.content_approval_team.run_content_approval_tests import run_content_approval_tests
 
 # Suppress warnings
 warnings.filterwarnings('ignore')
@@ -37,9 +36,25 @@ def create_content_approval_crew(content_source: str):
     approval_team = ContentApprovalTeam(verbose=bool(VERBOSE_OUTPUT))
     
     try:
-        # Process the content
-        result = approval_team.process_content(content_source)
-        return result
+        # Get crew, tasks and guidelines
+        crew, read_task, guidelines = approval_team.start_podcast_production_flow(content_source)
+        
+        if crew and read_task and guidelines:
+            # Execute the read guidelines task
+            result = crew.kickoff(inputs={"guidelines": guidelines})
+            
+            return {
+                "status": "guidelines_reviewed",
+                "result": result,
+                "message": "Guidelines have been reviewed and understood",
+                "next_step": "content_validation"
+            }
+        else:
+            return {
+                "status": "error",
+                "message": "Failed to prepare podcast production flow"
+            }
+            
     except Exception as e:
         print(f"Error in content approval: {str(e)}")
         return {
@@ -48,30 +63,13 @@ def create_content_approval_crew(content_source: str):
             "error_type": type(e).__name__
         }
 
-def run_approval_tests():
-    """Run the content approval test suite"""
-    print("\nRunning Content Approval Tests...")
-    print("=" * 50)
-    
-    try:
-        # Run all test categories
-        test_result = run_content_approval_tests(verbose=bool(VERBOSE_OUTPUT))
-        return test_result
-    except Exception as e:
-        print(f"Error running tests: {str(e)}")
-        return 1
-
 if __name__ == "__main__":
     check_environment()
     
-    # Example usage for content approval
+    # Normal flow
     content_source = "https://example.com/article"
     approval_result = create_content_approval_crew(content_source)
     print("Content Approval Result:", approval_result)
-    
-    # Run content approval tests if --test flag is provided
-    if "--test" in sys.argv:
-        sys.exit(run_approval_tests())
 
 """
 Original implementation below - currently being refactored

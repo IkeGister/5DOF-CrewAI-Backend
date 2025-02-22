@@ -36,15 +36,16 @@ Each task's output serves as context for subsequent tasks, ensuring
 a progressive validation process.
 """
 
-from crewai import Crew
-from typing import Dict, List, Optional, Any, Callable
+from crewai import Crew, Task
+from typing import Dict, List, Optional, Any, Callable, Tuple
 from pathlib import Path
 from dotenv import load_dotenv
 import os
 import requests
+import yaml
 
 # Update imports to be relative
-from .content_approval_tasks import create_content_approval_tasks
+from .content_approval_tasks import validate_content_tasks
 from .content_approval_agents import create_content_validator_agent as validator_creator
 
 # Original imports - kept for reference
@@ -73,8 +74,11 @@ class ContentApprovalTeam:
         self.crew = None
         self.task_callback: Optional[Callable[[Any], None]] = None
         
-        # Initialize team
-        self._setup_team()
+        # Load guidelines
+        self.guidelines = self._load_approval_guidelines()
+        
+        # Remove this line since we don't have content_source yet
+        # self._setup_team()
     
     def _load_environment(self):
         """Load environment variables from .env file"""
@@ -101,118 +105,110 @@ class ContentApprovalTeam:
                 "Please set it in your .env file"
             )
 
-    # Original tool initialization method - kept for reference
-    # def _initialize_tools(self) -> Dict:
-    #     """Initialize all tools needed by the team"""
-    #     yaml_path = Path(__file__).parent / "content_approval_directories.yaml"
-    #     print(f"YAML file path: {yaml_path}")
-    #     print(f"YAML file exists: {yaml_path.exists()}")
-    #     
-    #     content_dir = yaml_path.parent
-    #     
-    #     return {
-    #         "website_search": WebsiteSearchTool(),
-    #         "website_scraper": ScrapeWebsiteTool(),
-    #         "directory_reader": create_directory_verification_tools(
-    #             directory=str(content_dir),
-    #             config_path=str(yaml_path)
-    #         )
-    #     }
-
-    def _setup_team(self):
-        """Setup agents and tasks for the team"""
-        # Get creators only when needed
-        from .content_approval_agents import create_content_validator_agent as validator_creator
-        from .content_approval_tasks import create_content_approval_tasks as tasks_creator
+    def _load_approval_guidelines(self):
+        """
+        Load content approval guidelines from YAML
         
-        # Create agent without tools
+        Returns:
+            dict: The loaded guidelines
+            
+        Raises:
+            FileNotFoundError: If guidelines file is not found
+            ValueError: If guidelines are malformed or missing
+        """
+        yaml_path = Path(__file__).parent / "content_approval_directories.yaml"
+        print(f"\nLoading guidelines from: {yaml_path}")
+        print(f"Absolute path: {yaml_path.absolute()}")
+        print(f"File exists: {yaml_path.exists()}\n")
+        
+        if not yaml_path.exists():
+            raise FileNotFoundError(
+                f"YAML file not found at {yaml_path}. "
+                f"Current directory: {Path.cwd()}"
+            )
+        
+        try:
+            with open(yaml_path, 'r') as file:
+                yaml_content = yaml.safe_load(file)
+                if yaml_content is None or not isinstance(yaml_content, dict):
+                    raise ValueError("YAML file is empty or malformed")
+                guidelines = yaml_content.get('content_approval_guidelines')
+                if guidelines is None:
+                    raise ValueError("Missing content_approval_guidelines in YAML")
+                
+                # Debug output for structure
+                print("Guidelines structure:")
+                print("===================")
+                print("Top level keys:", list(guidelines.keys()))
+                print("\nPodcast requirements keys:", 
+                      list(guidelines.get('podcast_content_requirements', {}).keys()))
+                print("\nValidation checks structure:", 
+                      guidelines.get('podcast_content_requirements', {}).get('validation_checks', {}))
+                print("===================\n")
+                
+                return guidelines
+                
+        except KeyError as e:
+            print(f"KeyError: Missing key {e} in YAML structure")
+            raise
+        except yaml.YAMLError as e:
+            print(f"YAML parsing error: {e}")
+            raise
+        except Exception as e:
+            print(f"Unexpected error loading guidelines: {e}")
+            raise
+
+    def _setup_team(self, content_source: str):
+        """
+        Setup agents and tasks for the team
+        
+        Args:
+            content_source: URL or file path to validate
+        """
+        # Create agent with content source
         self.agents = {
-            "content_validator": validator_creator(tools=[])
+            "content_validator": validator_creator(url=content_source)
         }
         
-        # Original agent creation with tools - kept for reference
-        # self.agents = {
-        #     "content_validator": create_content_validator_agent(
-        #         tools=[
-        #             self.tools["website_search"],
-        #             self.tools["website_scraper"],
-        #             self.tools["directory_reader"]
-        #         ]
-        #     )
-        # }
-        
-        # Create tasks
-        self.tasks = tasks_creator(self.agents)
+        # Initialize empty tasks list
+        self.tasks = []
         
         # Create crew
-        self.crew = Crew(
-            agents=[self.agents["content_validator"]],
-            tasks=self.tasks,
-            verbose=self.verbose
-        )
+        if self.crew is None:
+            self.crew = Crew(
+                agents=[self.agents["content_validator"]],
+                tasks=self.tasks,
+                verbose=self.verbose
+            )
 
-    def _map_crew_output(self, result: Any) -> Dict:
-        """Converts the crew output to a dictionary if needed."""
-        if hasattr(result, "dict"):
-            return result.dict()
-        elif isinstance(result, dict):
-            return result
-        else:
-            raise ValueError("Crew output is not a dictionary")
-    
-    def process_content(self, content_source: str) -> Dict:
-        """Process content for approval."""
-        try:
-            if self.crew is None:
-                raise ValueError("Crew has not been initialized")
-            print(f"\nProcessing content: {content_source}")
+    def start_podcast_production_flow(self, content_source: str) -> Tuple[Crew, List[Task], dict]:
+        """
+        Start the podcast production flow
+        
+        Args:
+            content_source: URL or file path to source content
             
-            raw_result = self.crew.kickoff(inputs={"content_source": content_source})
-            if self.task_callback:
-                self.task_callback(raw_result)
-            result = self._map_crew_output(raw_result)
-            print(f"Crew result: {result}")
+        Returns:
+            Tuple[Crew, List[Task], dict]: (crew, tasks, guidelines)
+        """
+        # Setup team with content source
+        self._setup_team(content_source)
+        
+        # Create tasks
+        tasks = validate_content_tasks(
+            content_validator=self.agents["content_validator"],
+            guidelines=self.guidelines,
+            content_source=content_source
+        )
+        
+        # Update crew's tasks
+        if self.crew is not None:
+            self.crew.tasks = tasks
+        else:
+            raise ValueError("Crew initialization failed")
+        
+        return self.crew, tasks, self.guidelines
 
-            content_status = result.get("content_status", "UNKNOWN")
-            error_code = result.get("error_code")
-
-            if error_code:
-                return {
-                    "status": "rejected",
-                    "error_code": error_code,
-                    "error_message": result.get("error_message", "Unknown error"),
-                    "rejection_reason": result.get("rejection_reason", "Content validation failed"),
-                    "suggestions": result.get("suggestions", []),
-                    "metadata": result.get("metadata", {})
-                }
-
-            if content_status in ["CLEARED", "approved"]:
-                return {
-                    "status": "completed",
-                    "content_status": content_status,
-                    "details": result
-                }
-
-            return {
-                "status": "rejected",
-                "error_code": "PROCESSING_ERROR",
-                "error_message": "Content validation failed",
-                "rejection_reason": "Unable to process content",
-                "suggestions": ["Try a different source"],
-                "metadata": {}
-            }
-
-        except Exception as e:
-            print(f"Exception caught: {type(e).__name__}: {str(e)}")
-            return {
-                "status": "rejected",
-                "error_code": "PROCESSING_ERROR",
-                "error_message": str(e),
-                "rejection_reason": "Content processing failed",
-                "suggestions": ["Try again later"],
-                "metadata": {}
-            }
-    
     # Utility methods
     def get_agents(self) -> Dict:
         """Get all agents in the team"""
