@@ -1,29 +1,24 @@
 import { Request, Response, NextFunction } from 'express';
-import * as admin from 'firebase-admin';
 
-export interface AuthenticatedRequest extends Request {
-  user?: admin.auth.DecodedIdToken;
-}
-
-export const authenticateUser = async (
-  req: AuthenticatedRequest,
-  res: Response,
+export const authenticateUser = (
+  req: Request, 
+  res: Response, 
   next: NextFunction
-): Promise<void | Response> => {
-  try {
-    const authHeader = req.headers.authorization;
-    
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ error: 'Unauthorized - No token provided' });
-    }
+): Response | void => {
+  console.log('Headers:', req.headers);
+  console.log('API Key from request:', req.headers['x-api-key']);
+  console.log('Config API Key:', process.env.FUNCTIONS_CONFIG_CREWAI_FUNCTIONS_API_KEY);
+  
+  const apiKey = req.headers['x-api-key'];
+  const configApiKey = process.env.FUNCTIONS_CONFIG_CREWAI_FUNCTIONS_API_KEY;
 
-    const token = authHeader.split('Bearer ')[1];
-    const decodedToken = await admin.auth().verifyIdToken(token);
-    
-    req.user = decodedToken;
-    return next();
-  } catch (error) {
-    console.error('Authentication error:', error);
+  if (!apiKey) {
+    return res.status(401).json({ error: 'Unauthorized - No token provided' });
+  }
+
+  if (apiKey !== configApiKey) {
     return res.status(401).json({ error: 'Unauthorized - Invalid token' });
   }
+
+  return next();
 };

@@ -9,16 +9,31 @@ import sys
 from crewai import Crew
 from .config.settings import VERBOSE_OUTPUT, validate_settings
 from .agents.gistaApp_agents.content_approval_team.content_approval_team import ContentApprovalTeam
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, abort
+from functools import wraps
 
 # Suppress warnings
 warnings.filterwarnings('ignore')
 
+API_KEY = os.getenv('CREW_AI_FUNCTIONS_API_KEY')
+
 def check_environment():
     """Check if required environment variables are set"""
-    print(f"OpenAI API Key present: {'OPENAI_API_KEY' in os.environ}")
-    if 'OPENAI_API_KEY' not in os.environ:
-        raise ValueError("OPENAI_API_KEY not found in environment variables")
+    required_vars = {
+        'OPENAI_API_KEY': 'OpenAI API Key',
+        'CREW_AI_FUNCTIONS_API_KEY': 'CrewAI Functions API Key'
+    }
+    
+    missing_vars = []
+    for var, name in required_vars.items():
+        if var not in os.environ:
+            missing_vars.append(name)
+            print(f"{name} not present: {var} not in environment")
+    
+    if missing_vars:
+        raise ValueError(f"Missing environment variables: {', '.join(missing_vars)}")
+    
+    print("✅ All required environment variables are set")
 
 def create_content_approval_crew(content_source: str):
     """
@@ -66,7 +81,16 @@ def create_content_approval_crew(content_source: str):
 
 app = Flask(__name__)
 
+def require_api_key(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if request.headers.get('X-API-Key') == API_KEY:
+            return f(*args, **kwargs)
+        abort(401)
+    return decorated_function
+
 @app.route('/api/content/approve', methods=['POST'])
+@require_api_key
 def initiate_content_approval():
     try:
         # Get gist data from request

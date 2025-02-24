@@ -1,5 +1,7 @@
 # Environment
 .env
+.env.*
+!.env.example
 venv/
 .venv/
 
@@ -29,3 +31,12 @@ Thumbs.db
 # Test Files
 test_objects/
 **/test_objects/
+
+# Logs
+logs/
+*.log
+.log
+.logs
+firebase-debug.log*
+ui-debug.log*
+.firebase/
