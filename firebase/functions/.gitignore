@@ -6,11 +6,28 @@ node_modules/**/*
 # Build
 lib/
 dist/
+**/build/
+**/*.js.map
 
 # Environment
 .env
 .env.*
 !.env.example
+
+# Python
+**/venv/
+**/__pycache__/
+*.py[cod]
+**/site-packages/
+
+# Duplicates
+**/*\ 2*
+**/*\ 2.*
+
+# Firebase
+.firebase/
+firebase-debug.log*
+.firebaserc
 
 # Logs
 logs/
@@ -33,4 +50,17 @@ ui-debug.log*
 
 # OS
 .DS_Store
-Thumbs.db 
+Thumbs.db
+
+# Secrets
+**/serviceAccount.json
+**/serviceAccount*.json
+src/config/serviceAccount.json
+lib/config/serviceAccount.json
+
+# Node modules build
+**/node_modules/**/build/
+**/node_modules/**/*.js
+**/node_modules/underscore/amd/
+**/node_modules/yargs-parser/build/
+**/node_modules/**/lib/ 

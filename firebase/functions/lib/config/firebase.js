@@ -35,12 +35,8 @@ var __importStar = (this && this.__importStar) || (function () {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.db = void 0;
 const admin = __importStar(require("firebase-admin"));
-const serviceAccount = __importStar(require("./serviceAccount.json"));
-// Initialize Firebase Admin
-admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount)
-});
+// Initialize without service account
+admin.initializeApp();
 // Export Firestore for use in other files
 exports.db = admin.firestore();
-exports.default = admin;
 //# sourceMappingURL=firebase.js.map
