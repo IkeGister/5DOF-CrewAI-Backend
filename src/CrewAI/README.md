@@ -1,6 +1,6 @@
 # CrewAI Backend System
 
-A sophisticated AI system that works like a well-coordinated team, handling tasks from content analysis to podcast creation. Think of it as having a group of AI specialists working together, each bringing their unique skills to the table.
+A sophisticated AI system that works like a well-coordinated team, handling tasks from content analysis to podcast creation, now with Firebase Functions integration for production workflows.
 
 ## 🌟 What Makes This Special
 
@@ -13,34 +13,76 @@ A sophisticated AI system that works like a well-coordinated team, handling task
 
 ```
 CrewAI-Backend/
-├── CrewAI/
-│   ├── agents/
-│   │   ├── agents.py
-│   │   └── gistaApp_agents/
-│   │       ├── content_analysis_team/
-│   │       ├── content_approval_team/
-│   │       ├── script_writing_team/
-│   │       └── voice_production_team/
-│   ├── config/
-│   │   ├── llm_config.py
-│   │   ├── settings.py
-│   │   ├── topics.py
-│   │   └── voice_config.yaml
-│   ├── tasks/
-│   │   ├── crewAI_tasks.py
-│   │   └── gistaApp_tasks/
-│   ├── tools/
-│   │   ├── gista_tools/
-│   │   ├── content_gen_tools.py
-│   │   ├── ticket_search_tool.py
-│   │   └── travel_guide_tool.py
-│   ├── tests/
-│   │   └── [various test files]
-│   └── utils/
-├── db/                 # Database files
-├── test_objects/       # Test assets
-└── setup.py           # Package configuration
+├── firebase/                    # Firebase Functions
+│   └── functions/
+│       ├── src/
+│       │   ├── config/         # Firebase configuration
+│       │   │   ├── firebase.ts
+│       │   │   └── serviceAccount.json
+│       │   ├── controllers/    # Request handlers
+│       │   │   └── contentApproval.ts
+│       │   ├── middleware/     # Auth & validation
+│       │   │   └── auth.ts
+│       │   ├── routes/        # API routes
+│       │   │   └── api.ts
+│       │   ├── services/      # External services
+│       │   │   ├── crewAIService.ts
+│       │   │   └── firestore_service.ts
+│       │   └── index.ts       # Main entry
+│       ├── package.json
+│       └── tsconfig.json
+├── src/
+│   └── CrewAI/                # CrewAI Backend
+│       ├── agents/
+│       │   ├── agents.py
+│       │   └── gistaApp_agents/
+│       │       ├── content_analysis_team/
+│       │       ├── content_approval_team/
+│       │       ├── script_writing_team/
+│       │       └── voice_production_team/
+│       ├── config/
+│       │   ├── llm_config.py
+│       │   ├── settings.py
+│       │   ├── topics.py
+│       │   └── voice_config.yaml
+│       ├── tasks/
+│       ├── tools/
+│       ├── tests/
+│       └── main.py            # API server entry
+├── db/                        # Database files
+├── requirements.txt           # Python dependencies
+└── setup.py                   # Package configuration
 ```
+
+## 🏗️ Architecture
+
+### Service Integration
+```
+Client App → Firebase Functions → CrewAI Backend
+     ↑              ↓
+     └──── Firestore DB
+```
+
+### API Endpoints
+- **Content Approval Flow**
+  ```
+  POST /api/content/approve
+  {
+    "userId": "string",
+    "gistId": "string",
+    "gistData": {
+      "link": "string",
+      // other gist properties
+    }
+  }
+  ```
+
+### Production Workflow
+1. Firebase Functions receives gist update request
+2. Updates gist status in Firestore
+3. Triggers CrewAI content approval workflow
+4. CrewAI processes content and returns results
+5. Status updates reflected in Firestore
 
 ## 🚀 Getting Started
 
@@ -74,10 +116,19 @@ ELEVENLABS_API_KEY=your-key-here
 SERPER_API_KEY=your-key-here
 ```
 
-### Running the System
+### Additional Requirements
+- Flask server for API endpoints
+- Network access for Firebase Functions
 
+### Environment Setup
+```env
+# Add to existing .env
+CREW_AI_BASE_URL=http://localhost:5000  # For local development
+```
+
+### Running the API Server
 ```bash
-python main.py
+python main.py  # Starts Flask server on port 5000
 ```
 
 ## 🔧 Main Features
@@ -96,6 +147,11 @@ python main.py
 - Creates natural-sounding conversations
 - Supports multiple voice roles (host, expert)
 - Maintains consistent voice quality across segments
+
+### 4. Content Approval API
+- Receives requests from Firebase Functions
+- Processes content through AI teams
+- Returns approval status and results
 
 ## 🎯 Use Cases
 
@@ -121,6 +177,11 @@ The system is designed to be easily extended. You can add:
 - New research sources
 - Custom processing tools
 - Specialized voice configurations
+
+### Firebase Integration
+- Configurable endpoints
+- Custom status updates
+- Flexible workflow triggers
 
 ## 📈 Future Plans
 
