@@ -9,6 +9,7 @@ import sys
 from crewai import Crew
 from .config.settings import VERBOSE_OUTPUT, validate_settings
 from .agents.gistaApp_agents.content_approval_team.content_approval_team import ContentApprovalTeam
+from flask import Flask, request, jsonify
 
 # Suppress warnings
 warnings.filterwarnings('ignore')
@@ -63,6 +64,47 @@ def create_content_approval_crew(content_source: str):
             "error_type": type(e).__name__
         }
 
+app = Flask(__name__)
+
+@app.route('/api/content/approve', methods=['POST'])
+def initiate_content_approval():
+    try:
+        # Get gist data from request
+        data = request.get_json()  # Changed from request.json
+        if not data:
+            return jsonify({'success': False, 'error': 'No JSON data received'}), 400
+            
+        gist_data = data.get('gistData', {})
+        user_id = data.get('userId', '')
+        gist_id = data.get('gistId', '')
+
+        if not all([gist_data, user_id, gist_id]):
+            return jsonify({
+                'success': False,
+                'error': 'Missing required data'
+            }), 400
+
+        # Initialize content approval team
+        approval_team = ContentApprovalTeam(verbose=True)
+        
+        # Start the approval workflow
+        result = approval_team.start_podcast_production_flow(
+            content_source=gist_data['link']  # or other relevant field
+        )
+
+        return jsonify({
+            'success': True,
+            'message': 'Content approval workflow initiated',
+            'data': result
+        })
+
+    except Exception as e:
+        print(f"Error in content approval: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
 if __name__ == "__main__":
     check_environment()
     
@@ -70,6 +112,8 @@ if __name__ == "__main__":
     content_source = "https://example.com/article"
     approval_result = create_content_approval_crew(content_source)
     print("Content Approval Result:", approval_result)
+
+    app.run(host='0.0.0.0', port=5000)
 
 """
 Original implementation below - currently being refactored
