@@ -1,139 +1,246 @@
 import { Request, Response } from 'express';
-import { firestoreService } from '../services/firestore_service';
+import * as firebaseService from '../services/firebase_service';
 import { crewAIService } from '../services/crewAIService';
-import { Link, Gist } from '../types';
 
-
-export const contentApprovalController = {
-  async fetchUserGist(req: Request, res: Response) {
-    try {
-      const { userId, gistId } = req.params;
-
-      // Use firestoreService instead of direct db access
-      try {
-        if (gistId) {
-          const { gists } = await firestoreService.getUserGists(userId);
-          const gist = gists.find((g: Gist) => g.gistId === gistId);
-          
-          if (!gist) {
-            return res.status(404).json({
-              success: false,
-              error: 'Gist not found'
-            });
-          }
-
-          return res.status(200).json({
-            success: true,
-            data: gist
-          });
-        }
-
-        const result = await firestoreService.getUserGists(userId);
-        return res.status(200).json({
-          success: true,
-          data: result.gists
-        });
-      } catch (error: unknown) {
-        if (error instanceof Error) {
-          if (error.message === 'User not found') {
-            return res.status(404).json({
-              success: false,
-              error: 'User not found'
-            });
-          }
-        }
-        throw error;
-      }
-    } catch (error) {
-      console.error('Error fetching gist:', error);
-      return res.status(500).json({
-        success: false,
-        error: 'Failed to fetch gist'
-      });
+/**
+ * Fetch user gists
+ * 
+ * @param req Express request
+ * @param res Express response
+ */
+export const fetchUserGists = async (req: Request, res: Response) => {
+  try {
+    const { userId } = req.params;
+    
+    if (!userId) {
+      return res.status(400).json({ error: 'User ID is required' });
     }
-  },
+    
+    // Use the Firebase service to get user gists
+    const gists = await firebaseService.getUserGists(userId);
+    
+    return res.status(200).json({ 
+      success: true, 
+      gists 
+    });
+  } catch (error: any) {
+    console.error('Error fetching user gists:', error);
+    return res.status(500).json({ 
+      error: 'Failed to fetch user gists',
+      message: error.message 
+    });
+  }
+};
 
-  async updateGistProductionStatus(req: Request, res: Response) {
-    try {
-      const { userId, gistId } = req.params;
+/**
+ * Fetch a specific gist for a user
+ * 
+ * @param req Express request
+ * @param res Express response
+ */
+export const fetchUserGist = async (req: Request, res: Response) => {
+  try {
+    const { userId, gistId } = req.params;
+    
+    if (!userId || !gistId) {
+      return res.status(400).json({ error: 'User ID and Gist ID are required' });
+    }
+    
+    // Use the Firebase service to get the gist
+    const gist = await firebaseService.getGist(userId, gistId);
+    
+    if (!gist) {
+      return res.status(404).json({ error: 'Gist not found' });
+    }
+    
+    return res.status(200).json({ 
+      success: true, 
+      data: gist 
+    });
+  } catch (error: any) {
+    console.error('Error fetching user gist:', error);
+    return res.status(500).json({ 
+      error: 'Failed to fetch user gist',
+      message: error.message 
+    });
+  }
+};
+
+/**
+ * Update gist production status
+ * 
+ * @param req Express request
+ * @param res Express response
+ */
+export const updateGistProductionStatus = async (req: Request, res: Response) => {
+  try {
+    const { userId, gistId } = req.params;
+    const { inProduction, production_status } = req.body;
+    
+    if (!gistId) {
+      return res.status(400).json({ error: 'Gist ID is required' });
+    }
+    
+    if (!userId) {
+      return res.status(400).json({ error: 'User ID is required' });
+    }
+    
+    if (typeof inProduction !== 'boolean') {
+      return res.status(400).json({ error: 'inProduction must be a boolean' });
+    }
+    
+    if (!['draft', 'review', 'published'].includes(production_status)) {
+      return res.status(400).json({ error: 'Invalid production_status' });
+    }
+    
+    // Use the Firebase service to update the gist status
+    await firebaseService.updateGistStatus(userId, gistId, inProduction, production_status);
+    
+    // If moving to production, initiate CrewAI workflow
+    if (inProduction && production_status === 'review') {
+      // Get the gist data
+      const gist = await firebaseService.getGist(userId, gistId);
       
-      // Update status using firestoreService
-      const updatedGist = await firestoreService.updateGistStatus(userId, gistId, {
-        in_productionQueue: true,
-        production_status: 'In Production - Content Approval Pending'
-      });
-
-      // Trigger CrewAI workflow
-      await crewAIService.initiateContentApproval({
-        userId,
-        gistId,
-        gistData: updatedGist
-      });
-
-      return res.status(200).json({
-        success: true,
-        message: 'Gist production status updated successfully',
-        data: updatedGist
-      });
-
-    } catch (error: unknown) {
-      console.error('Error updating gist production status:', error);
-      const message = error instanceof Error ? error.message : 'Failed to update gist production status';
-      return res.status(500).json({
-        success: false,
-        error: message
-      });
-    }
-  },
-
-  async fetchUserLink(req: Request, res: Response) {
-    try {
-      const { userId, linkId } = req.params;
-
-      try {
-        const { links } = await firestoreService.getUserLinks(userId);
-        const link = links.find((l: Link) => l.link_id === linkId);
-        
-        if (!link) {
-          return res.status(404).json({
-            success: false,
-            error: 'Link not found'
-          });
+      if (gist) {
+        // Initiate CrewAI workflow
+        try {
+          await crewAIService.initiateContentApproval(gist);
+        } catch (error) {
+          console.error('Error initiating CrewAI workflow:', error);
         }
-
-        // Check if link is already processed
-        if (link.gist_created) {
-          return res.status(400).json({
-            success: false,
-            error: 'Link already processed into a gist'
-          });
-        }
-
-        return res.status(200).json({
-          success: true,
-          data: link
-        });
-
-      } catch (error: any) {
-        if (error.message === 'User not found') {
-          return res.status(404).json({
-            success: false,
-            error: 'User not found'
-          });
-        }
-        throw error;
       }
-    } catch (error) {
-      console.error('Error fetching link:', error);
-      return res.status(500).json({
-        success: false,
-        error: 'Failed to fetch link'
-      });
     }
-  },
+    
+    return res.status(200).json({ 
+      success: true, 
+      message: 'Gist production status updated successfully' 
+    });
+  } catch (error: any) {
+    console.error('Error updating gist production status:', error);
+    return res.status(500).json({ 
+      error: 'Failed to update gist production status',
+      message: error.message 
+    });
+  }
+};
 
-  // We'll add more methods here as we continue
-  // - createGist
-  // - updateGistStatus
-  // - initiateContentApproval
+/**
+ * Fetch user links
+ * 
+ * @param req Express request
+ * @param res Express response
+ */
+export const fetchUserLinks = async (req: Request, res: Response) => {
+  try {
+    const { userId } = req.params;
+    
+    if (!userId) {
+      return res.status(400).json({ error: 'User ID is required' });
+    }
+    
+    // Use the Firebase service to get user links
+    const links = await firebaseService.getUserLinks(userId);
+    
+    return res.status(200).json({ 
+      success: true, 
+      links 
+    });
+  } catch (error: any) {
+    console.error('Error fetching user links:', error);
+    return res.status(500).json({ 
+      error: 'Failed to fetch user links',
+      message: error.message 
+    });
+  }
+};
+
+/**
+ * Update multiple gists and their links in a batch operation
+ * 
+ * @param req Express request
+ * @param res Express response
+ */
+export const batchUpdateGists = async (req: Request, res: Response) => {
+  try {
+    const { userId } = req.params;
+    const { gistIds, inProduction, production_status } = req.body;
+    
+    if (!userId) {
+      return res.status(400).json({ error: 'User ID is required' });
+    }
+    
+    if (!gistIds || !Array.isArray(gistIds) || gistIds.length === 0) {
+      return res.status(400).json({ error: 'gistIds must be a non-empty array' });
+    }
+    
+    if (typeof inProduction !== 'boolean') {
+      return res.status(400).json({ error: 'inProduction must be a boolean' });
+    }
+    
+    if (!['draft', 'review', 'published'].includes(production_status)) {
+      return res.status(400).json({ error: 'Invalid production_status' });
+    }
+    
+    // Use the Firebase service to batch update gists
+    await firebaseService.batchUpdateGists(
+      userId,
+      gistIds,
+      inProduction,
+      production_status
+    );
+    
+    return res.status(200).json({ 
+      success: true, 
+      message: 'Gists updated successfully' 
+    });
+  } catch (error: any) {
+    console.error('Error batch updating gists:', error);
+    return res.status(500).json({ 
+      error: 'Failed to batch update gists',
+      message: error.message 
+    });
+  }
+};
+
+/**
+ * Update a gist and all its related links atomically
+ * 
+ * @param req Express request
+ * @param res Express response
+ */
+export const updateGistAndLinks = async (req: Request, res: Response) => {
+  try {
+    const { userId, gistId } = req.params;
+    const { inProduction, production_status } = req.body;
+    
+    if (!gistId) {
+      return res.status(400).json({ error: 'Gist ID is required' });
+    }
+    
+    if (!userId) {
+      return res.status(400).json({ error: 'User ID is required' });
+    }
+    
+    if (typeof inProduction !== 'boolean') {
+      return res.status(400).json({ error: 'inProduction must be a boolean' });
+    }
+    
+    if (!['draft', 'review', 'published'].includes(production_status)) {
+      return res.status(400).json({ error: 'Invalid production_status' });
+    }
+    
+    // Use the Firebase service to update the gist and its links
+    await firebaseService.updateGistAndLinks(userId, gistId, inProduction, production_status);
+    
+    return res.status(200).json({ 
+      success: true, 
+      message: 'Gist and related links updated successfully' 
+    });
+  } catch (error: any) {
+    console.error('Error updating gist and links:', error);
+    return res.status(500).json({ 
+      error: 'Failed to update gist and links',
+      message: error.message 
+    });
+  }
 };

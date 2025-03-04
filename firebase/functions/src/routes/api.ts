@@ -1,18 +1,32 @@
-import * as express from 'express';
-import { contentApprovalController } from '../controllers/contentApproval';
+import express from 'express';
+import { 
+  fetchUserGists, 
+  fetchUserGist, 
+  updateGistProductionStatus, 
+  fetchUserLinks,
+  batchUpdateGists,
+  updateGistAndLinks
+} from '../controllers/contentApproval';
+import { authenticateUser } from '../middleware/auth';
 
 const router = express.Router();
 
-// Get all gists for a user
-router.get('/gists/:userId', contentApprovalController.fetchUserGist);
+// Apply authentication middleware to all routes
+router.use(authenticateUser);
 
-// Get specific gist
-router.get('/gists/:userId/:gistId', contentApprovalController.fetchUserGist);
+// Health check endpoint
+router.get('/health', (req, res) => {
+  res.status(200).json({ status: 'ok', message: 'API is running' });
+});
 
-// Update gist production status
-router.post('/gists/:userId/:gistId/production', contentApprovalController.updateGistProductionStatus);
+// Gist routes
+router.get('/gists/:userId', fetchUserGists);
+router.get('/gists/:userId/:gistId', fetchUserGist);
+router.put('/gists/:userId/:gistId/status', updateGistProductionStatus);
+router.put('/gists/:userId/batch/status', batchUpdateGists);
+router.put('/gists/:userId/:gistId/with-links', updateGistAndLinks);
 
-// Get specific link for content approval
-router.get('/links/:userId/:linkId', contentApprovalController.fetchUserLink);
+// Link routes
+router.get('/links/:userId', fetchUserLinks);
 
 export default router;
