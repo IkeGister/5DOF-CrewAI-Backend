@@ -38,6 +38,7 @@ coverage.xml
 
 # Node modules
 node_modules/
+**/node_modules/
 
 # Firebase
 firebase-debug.log
@@ -61,4 +62,9 @@ yarn-error.log*
 .env.production.local
 
 # mypy
-.mypy_cache/ 
+.mypy_cache/
+
+# Test results
+test-results/
+**/test-results/
+**/test-results/*.json 

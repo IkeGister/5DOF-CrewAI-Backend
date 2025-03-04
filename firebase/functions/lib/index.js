@@ -35,91 +35,86 @@ var __importStar = (this && this.__importStar) || (function () {
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
+var _a, _b, _c;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.api = void 0;
 const functions = __importStar(require("firebase-functions"));
 const express_1 = __importDefault(require("express"));
 const cors_1 = __importDefault(require("cors"));
 const api_1 = __importDefault(require("./routes/api"));
-const auth_1 = require("./middleware/auth");
 // Create Express app
 const app = (0, express_1.default)();
-// Make config available
-process.env.FUNCTIONS_CONFIG_CREWAI_FUNCTIONS_API_KEY = process.env.FUNCTIONS_CONFIG_CREWAI_FUNCTIONS_API_KEY;
-// IP restriction middleware - uncomment and configure if needed
-// const ALLOWED_IPS = ['123.456.789.0']; // Replace with your actual allowed IPs
+// Make service API key available
+if ((_a = functions.config().service) === null || _a === void 0 ? void 0 : _a.api_key) {
+    process.env.SERVICE_API_KEY = functions.config().service.api_key;
+}
+// Make CrewAI API key available
+if ((_b = functions.config().crewai) === null || _b === void 0 ? void 0 : _b.api_key) {
+    process.env.CREW_AI_API_KEY = functions.config().crewai.api_key;
+}
+// Make CrewAI base URL available
+if ((_c = functions.config().crewai) === null || _c === void 0 ? void 0 : _c.base_url) {
+    process.env.CREW_AI_BASE_URL = functions.config().crewai.base_url;
+}
+// Set SKIP_API_KEY_VALIDATION to true in development mode
+if (process.env.NODE_ENV === 'development') {
+    process.env.SKIP_API_KEY_VALIDATION = 'true';
+    console.log('Development mode: API key validation is skipped');
+}
+// Optional: Configure IP restriction for additional security
+// This can be enabled in production to restrict access to specific IP addresses
+// const allowedIPs = functions.config().security?.allowed_ips?.split(',') || [];
 // app.use((req, res, next) => {
-//   const clientIp = req.ip || req.headers['x-forwarded-for'] || req.connection.remoteAddress;
-//   if (!ALLOWED_IPS.includes(clientIp)) {
-//     console.warn(`Access denied for IP: ${clientIp}`);
-//     return res.status(403).json({
-//       success: false,
-//       error: 'Access denied'
-//     });
+//   const clientIP = req.ip || req.connection.remoteAddress;
+//   if (allowedIPs.length === 0 || allowedIPs.includes(clientIP)) {
+//     return next();
 //   }
-//   next();
+//   return res.status(403).json({ error: 'Forbidden', message: 'IP not allowed' });
 // });
-// Rate limiting - uncomment if needed
-// const RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000; // 15 minutes
-// const MAX_REQUESTS_PER_WINDOW = 100; // 100 requests per 15 minutes
-// 
-// app.use((req, res, next) => {
-//   // Simple in-memory rate limiter
-//   // For production, use redis or a proper rate limiting library
-//   const now = Date.now();
-//   const key = req.ip || 'unknown';
-//   
-//   if (!global.rateLimiter) {
-//     global.rateLimiter = {};
-//   }
-//   
-//   if (!global.rateLimiter[key]) {
-//     global.rateLimiter[key] = {
-//       count: 0,
-//       resetAt: now + RATE_LIMIT_WINDOW_MS
-//     };
-//   }
-//   
-//   if (now > global.rateLimiter[key].resetAt) {
-//     global.rateLimiter[key] = {
-//       count: 1,
-//       resetAt: now + RATE_LIMIT_WINDOW_MS
-//     };
-//   } else {
-//     global.rateLimiter[key].count++;
-//   }
-//   
-//   if (global.rateLimiter[key].count > MAX_REQUESTS_PER_WINDOW) {
-//     return res.status(429).json({
-//       success: false,
-//       error: 'Too many requests, please try again later'
-//     });
-//   }
-//   
-//   next();
+// Optional: Configure rate limiting for additional security
+// This can be enabled in production to prevent abuse
+// const rateLimit = require('express-rate-limit');
+// const limiter = rateLimit({
+//   windowMs: 15 * 60 * 1000, // 15 minutes
+//   max: 100, // limit each IP to 100 requests per windowMs
+//   message: { error: 'Too many requests', message: 'Please try again later' }
 // });
+// app.use(limiter);
 // Middleware
 app.use((0, cors_1.default)({ origin: true }));
 app.use(express_1.default.json());
-// Authentication middleware for all routes
-app.use(auth_1.authenticateUser);
 // Routes
 app.use('/api', api_1.default);
 // Error handling
-app.use((err, req, res, _next) => {
-    console.error(err);
+app.use((err, req, res, next) => {
+    console.error('Unhandled error:', err);
     res.status(500).json({
         success: false,
-        error: 'Internal server error'
+        error: 'Internal Server Error',
+        message: process.env.NODE_ENV === 'development' ? err.message : 'Something went wrong'
     });
 });
 // Export the Express app as a Firebase Cloud Function
 exports.api = functions.https.onRequest(app);
-// If running locally, start the server
+// Start the server locally in development mode
 if (process.env.NODE_ENV === 'development') {
     const PORT = process.env.PORT || 3000;
+    // Set default values for environment variables if not already set
+    if (!process.env.SERVICE_API_KEY) {
+        process.env.SERVICE_API_KEY = 'dev-service-api-key';
+        console.log('Using default SERVICE_API_KEY for development');
+    }
+    if (!process.env.CREW_AI_API_KEY) {
+        process.env.CREW_AI_API_KEY = 'dev-crewai-api-key';
+        console.log('Using default CREW_AI_API_KEY for development');
+    }
+    if (!process.env.CREW_AI_BASE_URL) {
+        process.env.CREW_AI_BASE_URL = 'http://localhost:5000';
+        console.log(`Using default CREW_AI_BASE_URL: ${process.env.CREW_AI_BASE_URL}`);
+    }
     app.listen(PORT, () => {
-        console.log(`Server running on port ${PORT}`);
+        console.log(`Server running in development mode on port ${PORT}`);
+        console.log(`API available at: http://localhost:${PORT}/api`);
     });
 }
 //# sourceMappingURL=index.js.map

@@ -64,4 +64,9 @@ lib/config/serviceAccount.json
 **/node_modules/**/*.js
 **/node_modules/underscore/amd/
 **/node_modules/yargs-parser/build/
-**/node_modules/**/lib/ 
+**/node_modules/**/lib/
+
+# Test results
+test-results/
+**/test-results/
+**/test-results/*.json 

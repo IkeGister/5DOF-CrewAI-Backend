@@ -7,19 +7,19 @@ const express_1 = __importDefault(require("express"));
 const contentApproval_1 = require("../controllers/contentApproval");
 const auth_1 = require("../middleware/auth");
 const router = express_1.default.Router();
-// Apply authentication middleware to all routes
-router.use(auth_1.authenticateUser);
+// Apply service authentication middleware to all routes
+router.use(auth_1.authenticateService);
 // Health check endpoint
 router.get('/health', (req, res) => {
-    res.status(200).json({ status: 'ok', message: 'API is running' });
+    return res.status(200).json({ status: 'ok', message: 'API is running' });
 });
-// Gist routes
+// Gist routes with userId in URL parameters
 router.get('/gists/:userId', contentApproval_1.fetchUserGists);
 router.get('/gists/:userId/:gistId', contentApproval_1.fetchUserGist);
 router.put('/gists/:userId/:gistId/status', contentApproval_1.updateGistProductionStatus);
 router.put('/gists/:userId/batch/status', contentApproval_1.batchUpdateGists);
 router.put('/gists/:userId/:gistId/with-links', contentApproval_1.updateGistAndLinks);
-// Link routes
+// Link routes with userId in URL parameters
 router.get('/links/:userId', contentApproval_1.fetchUserLinks);
 exports.default = router;
 //# sourceMappingURL=api.js.map
