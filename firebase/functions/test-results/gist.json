@@ -1,0 +1,32 @@
+{
+  "success": true,
+  "data": {
+    "gistId": "gist_1741057003",
+    "category": "Technology",
+    "is_published": true,
+    "title": "Tech Trends Gist",
+    "link": "https://example.com/tech-article",
+    "image_url": "https://example.com/tech-article-image.jpg",
+    "ratings": 4,
+    "users": 42,
+    "status": {
+      "in_productionQueue": false,
+      "production_status": "In Production - Content Approval Pending",
+      "is_done_playing": false,
+      "playback_time": 45,
+      "is_now_playing": true
+    },
+    "is_played": false,
+    "playback_duration": 180,
+    "date_created": "2025-01-25T08:30:00Z",
+    "publisher": "theNewGista",
+    "segments": [
+      {
+        "segment_duration": 90,
+        "segment_title": "Latest Gadgets",
+        "segment_index": 0,
+        "segment_audioUrl": "http://someAudioFile.mp3"
+      }
+    ]
+  }
+}

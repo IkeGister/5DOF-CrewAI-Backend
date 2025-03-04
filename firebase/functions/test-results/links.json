@@ -1,0 +1,20 @@
+{
+  "success": true,
+  "links": [
+    {
+      "category": "Technology",
+      "username": "testGistaUser",
+      "user_id": "test_user_1741057003",
+      "gist_created": {
+        "gist_created": true,
+        "link_id": "link_1741057003",
+        "gist_id": "link_gist_1741057003",
+        "link_title": "Tech Resource",
+        "image_url": "https://example.com/storage-resource.jpg",
+        "link_type": "Web",
+        "url": "https://example.com/full-tech-resource"
+      },
+      "date_added": "2025-01-25T09:00:00Z"
+    }
+  ]
+}
