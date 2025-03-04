@@ -107,7 +107,7 @@ def test_get_gist(args):
 def test_update_gist_status(args):
     """Test the update gist status endpoint."""
     headers = {'X-API-Key': args.api_key, 'Content-Type': 'application/json'}
-    data = {'inProduction': True}
+    data = {'inProduction': True, 'production_status': 'review'}
     response = make_request('PUT', f'/api/gists/{args.user_id}/{args.gist_id}/status', headers=headers, data=data, args=args)
     save_response(response, 'update_status.json', args)
     return response
@@ -115,7 +115,7 @@ def test_update_gist_status(args):
 def test_batch_update_status(args):
     """Test the batch update status endpoint."""
     headers = {'X-API-Key': args.api_key, 'Content-Type': 'application/json'}
-    data = {'gistIds': [args.gist_id], 'inProduction': True}
+    data = {'gistIds': [args.gist_id], 'inProduction': True, 'production_status': 'review'}
     response = make_request('PUT', f'/api/gists/{args.user_id}/batch/status', headers=headers, data=data, args=args)
     save_response(response, 'batch_update.json', args)
     return response
@@ -123,7 +123,7 @@ def test_batch_update_status(args):
 def test_update_with_links(args):
     """Test the update gist with links endpoint."""
     headers = {'X-API-Key': args.api_key, 'Content-Type': 'application/json'}
-    data = {'links': ['link1', 'link2'], 'inProduction': True}
+    data = {'links': ['link1', 'link2'], 'inProduction': True, 'production_status': 'review'}
     response = make_request('PUT', f'/api/gists/{args.user_id}/{args.gist_id}/with-links', headers=headers, data=data, args=args)
     save_response(response, 'update_with_links.json', args)
     return response

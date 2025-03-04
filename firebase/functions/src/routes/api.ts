@@ -7,26 +7,26 @@ import {
   batchUpdateGists,
   updateGistAndLinks
 } from '../controllers/contentApproval';
-import { authenticateUser } from '../middleware/auth';
+import { authenticateService } from '../middleware/auth';
 
 const router = express.Router();
 
-// Apply authentication middleware to all routes
-router.use(authenticateUser);
+// Apply service authentication middleware to all routes
+router.use(authenticateService);
 
 // Health check endpoint
 router.get('/health', (req, res) => {
-  res.status(200).json({ status: 'ok', message: 'API is running' });
+  return res.status(200).json({ status: 'ok', message: 'API is running' });
 });
 
-// Gist routes
+// Gist routes with userId in URL parameters
 router.get('/gists/:userId', fetchUserGists);
 router.get('/gists/:userId/:gistId', fetchUserGist);
 router.put('/gists/:userId/:gistId/status', updateGistProductionStatus);
 router.put('/gists/:userId/batch/status', batchUpdateGists);
 router.put('/gists/:userId/:gistId/with-links', updateGistAndLinks);
 
-// Link routes
+// Link routes with userId in URL parameters
 router.get('/links/:userId', fetchUserLinks);
 
 export default router;

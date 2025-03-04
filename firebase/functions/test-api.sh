@@ -68,13 +68,13 @@ make_request "GET" "/api/gists/${TEST_USER}/${TEST_GIST}"
 make_request "GET" "/api/links/${TEST_USER}"
 
 # Test updating gist status
-make_request "PUT" "/api/gists/${TEST_USER}/${TEST_GIST}/status" '{"production": true}'
+make_request "PUT" "/api/gists/${TEST_USER}/${TEST_GIST}/status" '{"inProduction": true, "production_status": "review"}'
 
 # Test batch update
-make_request "PUT" "/api/gists/${TEST_USER}/batch/status" '{"gistIds": ["gist_1741057003"], "production": true}'
+make_request "PUT" "/api/gists/${TEST_USER}/batch/status" '{"gistIds": ["gist_1741057003"], "inProduction": true, "production_status": "review"}'
 
 # Test updating gist with links
-make_request "PUT" "/api/gists/${TEST_USER}/${TEST_GIST}/with-links" '{"links": ["link1", "link2"]}'
+make_request "PUT" "/api/gists/${TEST_USER}/${TEST_GIST}/with-links" '{"links": ["link1", "link2"], "inProduction": true, "production_status": "review"}'
 
 # Test error cases
 echo -e "${YELLOW}Testing error cases:${NC}"
