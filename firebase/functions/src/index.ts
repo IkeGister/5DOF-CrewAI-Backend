@@ -6,20 +6,8 @@ import apiRoutes from './routes/api';
 // Create Express app
 const app = express();
 
-// Make service API key available
-if (functions.config().service?.api_key) {
-  process.env.SERVICE_API_KEY = functions.config().service.api_key;
-}
-
-// Make CrewAI API key available
-if (functions.config().crewai?.api_key) {
-  process.env.CREW_AI_API_KEY = functions.config().crewai.api_key;
-}
-
-// Make CrewAI base URL available
-if (functions.config().crewai?.base_url) {
-  process.env.CREW_AI_BASE_URL = functions.config().crewai.base_url;
-}
+// In Firebase Functions v2, environment variables are set directly in the Firebase console
+// or via the firebase.json file, so we don't need to use functions.config() anymore
 
 // Set SKIP_API_KEY_VALIDATION to true in development mode
 if (process.env.NODE_ENV === 'development') {
@@ -37,6 +25,10 @@ if (process.env.NODE_ENV === 'development') {
 //   }
 //   return res.status(403).json({ error: 'Forbidden', message: 'IP not allowed' });
 // });
+
+
+
+
 
 // Optional: Configure rate limiting for additional security
 // This can be enabled in production to prevent abuse

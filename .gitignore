@@ -44,6 +44,7 @@ node_modules/
 firebase-debug.log
 firebase-debug.*.log
 .firebase/
+firebase/firebase.json
 
 # TypeScript compiled output
 lib/

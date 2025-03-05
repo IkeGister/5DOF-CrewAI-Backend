@@ -35,7 +35,6 @@ var __importStar = (this && this.__importStar) || (function () {
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
-var _a, _b, _c;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.api = void 0;
 const functions = __importStar(require("firebase-functions"));
@@ -44,18 +43,8 @@ const cors_1 = __importDefault(require("cors"));
 const api_1 = __importDefault(require("./routes/api"));
 // Create Express app
 const app = (0, express_1.default)();
-// Make service API key available
-if ((_a = functions.config().service) === null || _a === void 0 ? void 0 : _a.api_key) {
-    process.env.SERVICE_API_KEY = functions.config().service.api_key;
-}
-// Make CrewAI API key available
-if ((_b = functions.config().crewai) === null || _b === void 0 ? void 0 : _b.api_key) {
-    process.env.CREW_AI_API_KEY = functions.config().crewai.api_key;
-}
-// Make CrewAI base URL available
-if ((_c = functions.config().crewai) === null || _c === void 0 ? void 0 : _c.base_url) {
-    process.env.CREW_AI_BASE_URL = functions.config().crewai.base_url;
-}
+// In Firebase Functions v2, environment variables are set directly in the Firebase console
+// or via the firebase.json file, so we don't need to use functions.config() anymore
 // Set SKIP_API_KEY_VALIDATION to true in development mode
 if (process.env.NODE_ENV === 'development') {
     process.env.SKIP_API_KEY_VALIDATION = 'true';

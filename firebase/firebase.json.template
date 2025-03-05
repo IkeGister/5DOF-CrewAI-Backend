@@ -15,9 +15,9 @@
     "runtime": "nodejs18",
     "gen": 2,
     "environmentVariables": {
-      "SERVICE_API_KEY": "AIzaSyBpyUfx_HjOdkkaVO2HnOyIPtVDHb7XI6Q",
-      "CREW_AI_API_KEY": "AIzaSyBpyUfx_HjOdkkaVO2HnOyIPtVDHb7XI6Q",
-      "CREW_AI_BASE_URL": "https://your-crewai-service-url.com"
+      "SERVICE_API_KEY": "YOUR_SERVICE_API_KEY",
+      "CREW_AI_API_KEY": "YOUR_CREW_AI_API_KEY",
+      "CREW_AI_BASE_URL": "YOUR_CREW_AI_BASE_URL"
     }
   },
   "extensions": {

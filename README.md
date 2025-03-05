@@ -27,6 +27,50 @@ Install Python 3.11+
 Set up the project
 Start creating podcasts!
 
+🔧 Environment Setup & Deployment
+1. **Local Environment Setup**
+   - Create a `.env` file in the root directory with your API keys:
+     ```
+     SERVICE_API_KEY=your_service_api_key
+     CREW_AI_API_KEY=your_openai_api_key
+     CREW_AI_BASE_URL=https://api.openai.com/v1
+     ```
+
+2. **Firebase Deployment**
+   - Navigate to the `firebase` directory
+   - Copy `firebase.json.template` to `firebase.json` and add your actual API keys:
+     ```
+     {
+       "functions": {
+         "source": "functions",
+         "codebase": "default",
+         "ignore": [
+           "node_modules",
+           ".git",
+           "firebase-debug.log",
+           "firebase-debug.*.log"
+         ],
+         "predeploy": [
+           "npm --prefix \"$RESOURCE_DIR\" run lint",
+           "npm --prefix \"$RESOURCE_DIR\" run build"
+         ],
+         "gen": 2,
+         "environmentVariables": {
+           "SERVICE_API_KEY": "your_service_api_key",
+           "CREW_AI_API_KEY": "your_openai_api_key",
+           "CREW_AI_BASE_URL": "https://api.openai.com/v1"
+         }
+       }
+     }
+     ```
+   - Build and deploy: `npm --prefix functions run build && firebase deploy --only functions`
+   - Access your API at the provided URL with the header `X-API-Key: your_service_api_key`
+
+3. **Security Note**
+   - Both `.env` and `firebase.json` contain sensitive API keys
+   - These files are added to `.gitignore` to prevent committing sensitive information
+   - Always use the template files for version control and add actual keys only in your local environment
+
 🎉 The Result
 
 Get professional-quality podcasts featuring:
