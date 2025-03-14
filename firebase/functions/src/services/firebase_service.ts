@@ -1,9 +1,8 @@
 import * as admin from 'firebase-admin';
-import { db, usersCollection } from '../config/firebase';
-import * as mockService from './mock/firebase_service_mock';
+import { usersCollection } from '../config/firebase';
 
-// Use mock implementations in development mode
-const isDevelopment = process.env.NODE_ENV === 'development';
+// Always use real database connections - no mocks allowed
+console.log(`Firebase Service running in REAL DATABASE MODE ONLY`);
 
 /**
  * Interfaces for Firestore documents
@@ -15,6 +14,10 @@ interface Gist {
   content: string;
   is_played: boolean;
   status: string;
+  inProduction?: boolean;
+  production_status?: string;
+  createdAt?: any;
+  updatedAt?: any;
   // Other gist properties as needed
 }
 
@@ -35,25 +38,6 @@ interface User {
   gists?: Gist[];
   links?: Link[];
 }
-
-// Mock data for testing
-const mockGists: Record<string, Record<string, any>> = {
-  'test_user_1741057003': {
-    'gist_1741057003': {
-      id: 'gist_1741057003',
-      title: 'Test Gist',
-      content: 'This is a test gist',
-      production_status: 'draft',
-      inProduction: false,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    }
-  }
-};
-
-const mockLinks: Record<string, string[]> = {
-  'test_user_1741057003': ['link1', 'link2']
-};
 
 /**
  * User Operations
@@ -87,29 +71,67 @@ export async function getUserGists(userId: string): Promise<Gist[]> {
  * Get a single gist by ID for a specific user
  */
 export async function getGist(userId: string, gistId: string): Promise<any> {
-  if (isDevelopment) {
-    console.log(`[MOCK] Getting gist: ${gistId} for user: ${userId}`);
-    const userGists = mockGists[userId];
-    if (!userGists || !userGists[gistId]) return null;
-    return userGists[gistId];
-  }
-  
-  // Original implementation for production
+  // Updated implementation to match database structure
   try {
-    const db = admin.firestore();
-    const gistRef = db.collection('users').doc(userId).collection('gists').doc(gistId);
-    const doc = await gistRef.get();
+    console.log(`[getGist] Looking for gist ${gistId} for user ${userId}`);
     
-    if (!doc.exists) {
+    const db = admin.firestore();
+    const userRef = db.collection('users').doc(userId);
+    const userDoc = await userRef.get();
+    
+    if (!userDoc.exists) {
+      console.log(`[getGist] User ${userId} not found`);
       return null;
     }
     
-    return {
-      id: doc.id,
-      ...doc.data()
-    };
+    const userData = userDoc.data();
+    if (!userData) {
+      console.log(`[getGist] User data is empty for ${userId}`);
+      return null;
+    }
+    
+    console.log(`[getGist] User data retrieved. Gists property type: ${typeof userData.gists}`);
+    console.log(`[getGist] Is gists an array? ${Array.isArray(userData.gists)}`);
+    
+    // Check if gists exists and is an array
+    if (userData.gists && Array.isArray(userData.gists)) {
+      console.log(`[getGist] Gists array length: ${userData.gists.length}`);
+      console.log(`[getGist] Available gistIds: ${JSON.stringify(userData.gists.map(g => g.gistId || g.id))}`);
+      
+      // Find the gist by gistId
+      const gist = userData.gists.find(g => g.gistId === gistId);
+      if (gist) {
+        console.log(`[getGist] Found gist in array with gistId: ${gist.gistId}`);
+        return gist;
+      }
+      
+      // Try finding by 'id' property as a fallback
+      const gistById = userData.gists.find(g => g.id === gistId);
+      if (gistById) {
+        console.log(`[getGist] Found gist in array with id: ${gistById.id}`);
+        return gistById;
+      }
+    } 
+    // Check if gists exists and is an object with numeric keys
+    else if (userData.gists && typeof userData.gists === 'object') {
+      console.log(`[getGist] Gists is an object with keys: ${Object.keys(userData.gists).join(', ')}`);
+      
+      // Look through the object entries
+      for (const key in userData.gists) {
+        const gist = userData.gists[key];
+        console.log(`[getGist] Checking gist at key ${key} with gistId: ${gist?.gistId || 'undefined'} and id: ${gist?.id || 'undefined'}`);
+        
+        if (gist && (gist.gistId === gistId || gist.id === gistId)) {
+          console.log(`[getGist] Found matching gist at key ${key}`);
+          return gist;
+        }
+      }
+    }
+    
+    console.log(`[getGist] Gist ${gistId} not found for user ${userId}`);
+    return null;
   } catch (error) {
-    console.error(`Error getting gist ${gistId} for user ${userId}:`, error);
+    console.error(`[getGist] Error getting gist ${gistId} for user ${userId}:`, error);
     throw error;
   }
 }
@@ -123,32 +145,11 @@ export async function updateGistStatus(
   inProduction: boolean, 
   status: 'draft' | 'review' | 'published'
 ): Promise<any> {
-  if (isDevelopment) {
-    console.log(`[MOCK] Updating gist status: ${gistId} for user: ${userId}`);
-    console.log(`[MOCK] inProduction: ${inProduction}, production_status: ${status}`);
-    
-    if (!mockGists[userId]) mockGists[userId] = {};
-    if (!mockGists[userId][gistId]) {
-      mockGists[userId][gistId] = {
-        id: gistId,
-        title: 'New Test Gist',
-        content: 'This is a new test gist',
-        production_status: 'draft',
-        inProduction: false,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      };
-    }
-    
-    mockGists[userId][gistId].inProduction = inProduction;
-    mockGists[userId][gistId].production_status = status;
-    mockGists[userId][gistId].updatedAt = new Date().toISOString();
-    
-    return mockGists[userId][gistId];
-  }
-  
   // Original implementation for production
   try {
+    console.log(`[updateGistStatus] Updating status for gist ${gistId} for user ${userId}`);
+    console.log(`[updateGistStatus] Setting inProduction=${inProduction}, status=${status}`);
+    
     // Get the user document
     const userRef = usersCollection.doc(userId);
     const userDoc = await userRef.get();
@@ -158,29 +159,101 @@ export async function updateGistStatus(
     }
     
     const userData = userDoc.data() as User;
-    const gists = userData.gists || [];
+    const gists = userData.gists;
     
-    // Find the gist index
-    const gistIndex = gists.findIndex(g => g.id === gistId);
-    
-    if (gistIndex === -1) {
-      throw new Error('Gist not found');
+    // Handle the case where gists is not defined
+    if (!gists) {
+      throw new Error('Gists not found');
     }
     
-    // Update the gist in the array
-    await userRef.update({
-      [`gists.${gistIndex}.inProduction`]: inProduction,
-      [`gists.${gistIndex}.production_status`]: status,
-      [`gists.${gistIndex}.updatedAt`]: admin.firestore.FieldValue.serverTimestamp()
-    });
+    // Handle the case where gists is an object with numeric keys
+    if (typeof gists === 'object' && !Array.isArray(gists)) {
+      // Check if the gist exists in the object
+      let found = false;
+      
+      // Try to find the gist by ID
+      for (const key in gists as Record<string, any>) {
+        if (Object.prototype.hasOwnProperty.call(gists, key)) {
+          const gist = (gists as Record<string, any>)[key];
+          if (gist && (gist.id === gistId || gist.gistId === gistId)) {
+            // Update both top-level properties and the nested status object
+            console.log(`[updateGistStatus] Found gist at key ${key}, updating status`);
+            await userRef.update({
+              // Top-level properties
+              [`gists.${key}.inProduction`]: inProduction,
+              [`gists.${key}.production_status`]: status,
+              // Nested status object
+              [`gists.${key}.status.inProduction`]: inProduction,
+              [`gists.${key}.status.production_status`]: status
+            });
+            
+            found = true;
+            break;
+          }
+        }
+      }
+      
+      if (!found) {
+        // If the gist doesn't exist, add it to the object
+        console.log(`[updateGistStatus] Gist not found, adding new entry`);
+        const newKey = Object.keys(gists).length;
+        await userRef.update({
+          [`gists.${newKey}.id`]: gistId,
+          [`gists.${newKey}.inProduction`]: inProduction,
+          [`gists.${newKey}.production_status`]: status,
+          [`gists.${newKey}.status.inProduction`]: inProduction,
+          [`gists.${newKey}.status.production_status`]: status
+        });
+      }
+      
+      // Return the updated user document
+      console.log(`[updateGistStatus] Successfully updated gist status`);
+      const updatedUserDoc = await userRef.get();
+      const updatedUserData = updatedUserDoc.data() as User;
+      
+      return updatedUserData.gists;
+    }
     
-    // Return updated gist
-    const updatedUserDoc = await userRef.get();
-    const updatedUserData = updatedUserDoc.data() as User;
-    return updatedUserData.gists?.[gistIndex] || null;
+    // Handle the case where gists is an array
+    if (Array.isArray(gists)) {
+      // Find the gist index
+      const gistIndex = gists.findIndex(g => g.id === gistId || g.gistId === gistId);
+      
+      if (gistIndex === -1) {
+        throw new Error('Gist not found');
+      }
+      
+      console.log(`[updateGistStatus] Found gist at index ${gistIndex}, updating status`);
+      // Update both top-level properties and the nested status object
+      await userRef.update({
+        // Top-level properties
+        [`gists.${gistIndex}.inProduction`]: inProduction,
+        [`gists.${gistIndex}.production_status`]: status,
+        // Nested status object
+        [`gists.${gistIndex}.status.inProduction`]: inProduction,
+        [`gists.${gistIndex}.status.production_status`]: status
+      });
+      
+      // Return updated gist
+      console.log(`[updateGistStatus] Successfully updated gist status`);
+      const updatedUserDoc = await userRef.get();
+      const updatedUserData = updatedUserDoc.data() as User;
+      return updatedUserData.gists?.[gistIndex] || null;
+    }
+    
+    // If we get here, gists is neither an object nor an array
+    throw new Error('Gists has an unsupported type');
   } catch (error) {
-    console.error(`Error updating gist ${gistId} for user ${userId}:`, error);
-    throw error;
+    console.error(`[updateGistStatus] Error updating gist ${gistId} for user ${userId}:`, error);
+    // Return a structured error response instead of throwing
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : String(error),
+      code: error instanceof Error && 
+            (error.message === 'Gist not found' || 
+             error.message === 'User not found' || 
+             error.message === 'Gists not found') ? 404 : 500
+    };
   }
 }
 
@@ -266,7 +339,7 @@ export async function updateLinkStatus(
  */
 
 /**
- * Update a gist and all its related links for a user
+ * Update a gist and its links
  */
 export async function updateGistAndLinks(
   userId: string,
@@ -275,96 +348,155 @@ export async function updateGistAndLinks(
   inProduction: boolean,
   status: 'draft' | 'review' | 'published'
 ): Promise<any> {
-  if (isDevelopment) {
-    console.log(`[MOCK] Updating gist and links: ${gistId} for user: ${userId}`);
-    console.log(`[MOCK] links: ${links.join(', ')}`);
-    console.log(`[MOCK] inProduction: ${inProduction}, production_status: ${status}`);
+  // Original implementation for production
+  try {
+    console.log(`[updateGistAndLinks] Updating gist ${gistId} and links for user ${userId}`);
+    console.log(`[updateGistAndLinks] Setting inProduction=${inProduction}, status=${status}`);
     
-    // Update gist
-    if (!mockGists[userId]) mockGists[userId] = {};
-    if (!mockGists[userId][gistId]) {
-      mockGists[userId][gistId] = {
-        id: gistId,
-        title: 'New Test Gist',
-        content: 'This is a new test gist',
-        production_status: 'draft',
-        inProduction: false,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
+    // Get the user document
+    const userRef = usersCollection.doc(userId);
+    const userDoc = await userRef.get();
+    
+    if (!userDoc.exists) {
+      throw new Error('User not found');
+    }
+    
+    const userData = userDoc.data() as User;
+    const gists = userData.gists;
+    const existingLinks = userData.links;
+    
+    // Handle the case where gists is not defined
+    if (!gists) {
+      throw new Error('Gists not found');
+    }
+    
+    // Handle the case where gists is an object with keys
+    if (typeof gists === 'object' && !Array.isArray(gists)) {
+      let gistKey = null;
+      
+      // Try to find the gist by ID
+      for (const key in gists as Record<string, any>) {
+        if (Object.prototype.hasOwnProperty.call(gists, key)) {
+          const gist = (gists as Record<string, any>)[key];
+          if (gist && (gist.id === gistId || gist.gistId === gistId)) {
+            gistKey = key;
+            break;
+          }
+        }
+      }
+      
+      if (gistKey === null) {
+        throw new Error('Gist not found');
+      }
+      
+      // Update both top-level properties and the nested status object
+      console.log(`[updateGistAndLinks] Found gist at key ${gistKey}, updating status`);
+      await userRef.update({
+        // Top-level properties
+        [`gists.${gistKey}.inProduction`]: inProduction,
+        [`gists.${gistKey}.production_status`]: status,
+        // Nested status object
+        [`gists.${gistKey}.status.inProduction`]: inProduction,
+        [`gists.${gistKey}.status.production_status`]: status
+      });
+      
+      // Update links if provided
+      if (links && links.length > 0) {
+        await userRef.update({ links });
+      }
+      
+      // Find and update all related links
+      if (Array.isArray(existingLinks)) {
+        for (let linkIndex = 0; linkIndex < existingLinks.length; linkIndex++) {
+          const link = existingLinks[linkIndex];
+          if (link && link.gistId === gistId) {
+            await userRef.update({
+              [`links.${linkIndex}.inProduction`]: inProduction,
+              [`links.${linkIndex}.production_status`]: status
+            });
+          }
+        }
+      }
+      
+      // Get updated data
+      console.log(`[updateGistAndLinks] Successfully updated gist status and links`);
+      const updatedUserDoc = await userRef.get();
+      const updatedUserData = updatedUserDoc.data() as User;
+      
+      return {
+        gist: (updatedUserData.gists as Record<string, any>)[gistKey],
+        links: updatedUserData.links || []
       };
     }
     
-    mockGists[userId][gistId].inProduction = inProduction;
-    mockGists[userId][gistId].production_status = status;
-    mockGists[userId][gistId].updatedAt = new Date().toISOString();
-    
-    // Update links
-    mockLinks[userId] = links;
-    
-    return {
-      gist: mockGists[userId][gistId],
-      links: mockLinks[userId]
-    };
-  }
-  
-  // Original implementation for production
-  try {
-    await db.runTransaction(async (transaction) => {
-      // Get the user document
-      const userRef = usersCollection.doc(userId);
-      const userDoc = await transaction.get(userRef);
-      
-      if (!userDoc.exists) {
-        throw new Error('User not found');
+    // Handle the case where gists is an array
+    if (Array.isArray(gists)) {
+      // Make sure gists is an array
+      if (!Array.isArray(gists)) {
+        throw new Error('Gists is not an array');
       }
       
-      const userData = userDoc.data() as User;
-      const gists = userData.gists || [];
-      const existingLinks = userData.links || [];
-      
       // Find the gist index
-      const gistIndex = gists.findIndex(g => g.id === gistId);
+      const gistIndex = gists.findIndex(g => g.id === gistId || g.gistId === gistId);
       
       if (gistIndex === -1) {
         throw new Error('Gist not found');
       }
       
-      // Update the gist
-      transaction.update(userRef, {
+      // Update both top-level properties and the nested status object
+      console.log(`[updateGistAndLinks] Found gist at index ${gistIndex}, updating status`);
+      await userRef.update({
+        // Top-level properties
         [`gists.${gistIndex}.inProduction`]: inProduction,
         [`gists.${gistIndex}.production_status`]: status,
-        [`gists.${gistIndex}.updatedAt`]: admin.firestore.FieldValue.serverTimestamp()
+        // Nested status object
+        [`gists.${gistIndex}.status.inProduction`]: inProduction,
+        [`gists.${gistIndex}.status.production_status`]: status
       });
       
       // Update links if provided
       if (links && links.length > 0) {
-        transaction.update(userRef, { links });
+        await userRef.update({ links });
       }
       
       // Find and update all related links
-      existingLinks.forEach((link, linkIndex) => {
-        if (link.gistId === gistId) {
-          transaction.update(userRef, {
-            [`links.${linkIndex}.inProduction`]: inProduction,
-            [`links.${linkIndex}.production_status`]: status,
-            [`links.${linkIndex}.updatedAt`]: admin.firestore.FieldValue.serverTimestamp()
-          });
+      if (Array.isArray(existingLinks)) {
+        for (let linkIndex = 0; linkIndex < existingLinks.length; linkIndex++) {
+          const link = existingLinks[linkIndex];
+          if (link && link.gistId === gistId) {
+            await userRef.update({
+              [`links.${linkIndex}.inProduction`]: inProduction,
+              [`links.${linkIndex}.production_status`]: status
+            });
+          }
         }
-      });
-    });
+      }
+      
+      // Get updated data
+      console.log(`[updateGistAndLinks] Successfully updated gist status and links`);
+      const updatedUserDoc = await userRef.get();
+      const updatedUserData = updatedUserDoc.data() as User;
+      const updatedGist = updatedUserData.gists?.find(g => g.id === gistId || g.gistId === gistId);
+      
+      return {
+        gist: updatedGist,
+        links: updatedUserData.links || []
+      };
+    }
     
-    // Get updated data
-    const userDoc = await usersCollection.doc(userId).get();
-    const userData = userDoc.data() as User;
-    const gist = userData.gists?.find(g => g.id === gistId);
-    
-    return {
-      gist,
-      links: userData.links || []
-    };
+    // If we get here, gists is neither an object nor an array
+    throw new Error('Gists has an unsupported type');
   } catch (error) {
-    console.error(`Error updating gist ${gistId} and links for user ${userId}:`, error);
-    throw error;
+    console.error(`[updateGistAndLinks] Error updating gist ${gistId} and links for user ${userId}:`, error);
+    // Return a structured error response instead of throwing
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : String(error),
+      code: error instanceof Error && 
+            (error.message === 'Gist not found' || 
+             error.message === 'User not found' || 
+             error.message === 'Gists not found') ? 404 : 500
+    };
   }
 }
 
@@ -376,32 +508,101 @@ export async function batchUpdateGists(
   gistIds: string[],
   inProduction: boolean,
   status: 'draft' | 'review' | 'published'
-): Promise<number> {
-  if (isDevelopment) {
-    return mockService.batchUpdateGists(userId, gistIds, inProduction, status);
-  }
-  
+): Promise<number | { success: boolean; error: string; code: number }> {
   // Original implementation for production
   try {
-    const db = admin.firestore();
-    const batch = db.batch();
-    let updatedCount = 0;
+    // In the mock implementation, we're using a different data structure
+    // For the real implementation, we need to use the Firestore collection structure
+    const userRef = usersCollection.doc(userId);
+    const userDoc = await userRef.get();
     
-    for (const gistId of gistIds) {
-      const gistRef = db.collection('users').doc(userId).collection('gists').doc(gistId);
-      batch.update(gistRef, {
-        inProduction,
-        production_status: status,
-        updatedAt: admin.firestore.FieldValue.serverTimestamp()
-      });
-      updatedCount++;
+    if (!userDoc.exists) {
+      throw new Error('User not found');
     }
     
-    await batch.commit();
-    return updatedCount;
+    let updatedCount = 0;
+    const userData = userDoc.data() as User;
+    const gists = userData.gists;
+    
+    // Handle the case where gists is not defined
+    if (!gists) {
+      throw new Error('Gists not found');
+    }
+    
+    // Handle the case where gists is an object with numeric keys
+    if (typeof gists === 'object' && !Array.isArray(gists)) {
+      // Process each gist ID
+      for (const gistId of gistIds) {
+        let found = false;
+        
+        // Try to find the gist by ID
+        for (const key in gists as Record<string, any>) {
+          if (Object.prototype.hasOwnProperty.call(gists, key)) {
+            const gist = (gists as Record<string, any>)[key];
+            if (gist && (gist.id === gistId || gist.gistId === gistId)) {
+              // Update the gist
+              await userRef.update({
+                [`gists.${key}.inProduction`]: inProduction,
+                [`gists.${key}.production_status`]: status
+              });
+              
+              updatedCount++;
+              found = true;
+              break;
+            }
+          }
+        }
+        
+        if (!found) {
+          console.error(`Gist ${gistId} not found for user ${userId}`);
+        }
+      }
+      
+      return updatedCount;
+    }
+    
+    // Handle the case where gists is an array
+    if (Array.isArray(gists)) {
+      // Process each gist ID individually
+      for (const gistId of gistIds) {
+        try {
+          // Find the gist index
+          const gistIndex = gists.findIndex(g => g.id === gistId || g.gistId === gistId);
+          
+          if (gistIndex === -1) {
+            console.error(`Gist ${gistId} not found for user ${userId}`);
+            continue;
+          }
+          
+          // Update the gist
+          await userRef.update({
+            [`gists.${gistIndex}.inProduction`]: inProduction,
+            [`gists.${gistIndex}.production_status`]: status
+          });
+          
+          updatedCount++;
+        } catch (error) {
+          console.error(`Error updating gist ${gistId} for user ${userId}:`, error);
+          // Continue with the next gist
+        }
+      }
+      
+      return updatedCount;
+    }
+    
+    // If we get here, gists is neither an object nor an array
+    throw new Error('Gists has an unsupported type');
   } catch (error) {
     console.error(`Error batch updating gists for user ${userId}:`, error);
-    throw error;
+    // Return a structured error response instead of throwing
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : String(error),
+      code: error instanceof Error && 
+            (error.message === 'Gist not found' || 
+             error.message === 'User not found' || 
+             error.message === 'Gists not found') ? 404 : 500
+    };
   }
 }
 
@@ -430,15 +631,9 @@ export async function testFirebaseConnection(): Promise<{
 
 // Alias functions for compatibility
 export const getGists = async (userId: string): Promise<any[]> => {
-  if (isDevelopment) {
-    return mockService.getGists(userId);
-  }
   return getUserGists(userId);
 };
 
 export const getLinks = async (userId: string): Promise<any[]> => {
-  if (isDevelopment) {
-    return mockService.getLinks(userId);
-  }
   return getUserLinks(userId);
 }; 

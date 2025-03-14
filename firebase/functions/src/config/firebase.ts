@@ -1,8 +1,20 @@
 import * as admin from 'firebase-admin';
 
-// Initialize Firebase Admin SDK without service account
-// This uses Application Default Credentials (ADC)
-admin.initializeApp();
+// Force REAL DATABASE connection only - no mocks
+console.log('Firebase Admin initialized (REAL DATABASE CONNECTION ONLY)');
+
+// Initialize Firebase Admin if not already initialized
+if (!admin.apps.length) {
+  try {
+    // Initialize using Application Default Credentials
+    admin.initializeApp();
+    
+    console.log(`Firebase Admin initialized with project ID: ${admin.app().options.projectId || 'default'}`);
+  } catch (error) {
+    console.error('Failed to initialize Firebase Admin:', error);
+    throw error;
+  }
+}
 
 // Export Firestore for use in other files
 export const db = admin.firestore();

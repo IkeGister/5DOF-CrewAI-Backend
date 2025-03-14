@@ -12,17 +12,15 @@ export interface Link {
 }
 
 export interface GistStatus {
-  is_done_playing: boolean;
-  is_now_playing: boolean;
-  playback_time: number;
-  in_productionQueue: boolean;
   production_status: string;
+  inProduction: boolean;
 }
 
 export interface GistSegment {
-  segment_duration: number;
-  segment_index: number;
   segment_title: string;
+  segment_audioUrl: string;
+  playback_duration: string;
+  segment_index: string;
 }
 
 export interface Gist {

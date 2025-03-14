@@ -35,6 +35,8 @@ if [ "$create_env" = true ]; then
     echo "SERVICE_API_KEY=$service_api_key" > .env
     echo "CREW_AI_API_KEY=$openai_api_key" >> .env
     echo "CREW_AI_BASE_URL=$openai_base_url" >> .env
+    # Add API key for testing - must match SERVICE_API_KEY for API authentication
+    echo "FUNCTIONS_CONFIG_CREWAI_FUNCTIONS_API_KEY=$service_api_key" >> .env
     
     echo -e "${GREEN}.env file created successfully!${NC}"
 fi

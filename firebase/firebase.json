@@ -22,5 +22,10 @@
   },
   "extensions": {
     "enabled": false
+  },
+  "emulators": {
+    "functions": {
+      "port": 5003
+    }
   }
 } 
